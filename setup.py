@@ -8,7 +8,7 @@ extensions = [
     Extension(
         "eski.base", ["eski/base.pyx"],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
-        # language="c++",
+        language="c++",
         include_dirs=[np.get_include()]
         )
 ]
