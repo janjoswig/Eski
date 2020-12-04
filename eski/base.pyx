@@ -275,9 +275,12 @@ cdef class Reporter:
 
     cdef Py_ssize_t interval
 
-    def __cinit__(self, interval):
+    def __cinit__(self, interval, *args, **kwargs):
         self.interval = interval
 
+    @property
+    def interval(self):
+        return self.interval
 
 cdef class ListReporter(Reporter):
     """A reporter that collects data in Python lists"""
@@ -313,6 +316,29 @@ cdef class PrintReporter(Reporter):
         print(np.asarray(system.structure))
 
 
+cdef class LogReporter(Reporter):
+    """A reporter that prints information to log file"""
+
+    cdef str file
+
+    def __cinit__(self, interval, file):
+        self.interval = interval
+        self.file = file
+        with open(self.file, "w") as logfile:
+           logfile.write("Step    Performance\n")
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interval={self.interval}, file={self.file})"
+
+    cpdef void report(self, System system):
+        with open(self.file, "a") as logfile:
+            logfile.write(f"{system._step}\n")
+
+    @property
+    def file(self):
+        return self.file
+
+
 cdef class System:
     """MD system
 
@@ -338,7 +364,9 @@ cdef class System:
     cdef dict forcefield
     cdef AVALUE[:, ::1] forces      # Evaluated forces
     cdef IntegratorEuler driver     # MD integrator
-    cdef Reporter reporter          # Data reporter
+    cdef list reporters             # Data reporters
+
+    cdef Py_ssize_t _step
 
     def __cinit__(
             self,
@@ -349,7 +377,7 @@ cdef class System:
             force_map,   # Forces to evaluate
             forcefield,  # Dicttionary defining forcefield parameters
             driver,      # MD integrator
-            reporter):   # Data reporter
+            reporters):   # Data reporter
         self.structure = np.copy(structure)     # Preserve input structure
         self.velocities = np.copy(velocities)   #                velocities
         self.n_atoms = self.structure.shape[0]
@@ -360,7 +388,9 @@ cdef class System:
         self.box = np.copy(box)
         self.boxinv = np.linalg.inv(box)
         self.driver = driver
-        self.reporter = reporter
+        self.reporters = reporters
+
+        self._step = 0
 
         # print(self.structure)
         # print(self.box)
@@ -461,7 +491,6 @@ cdef class System:
                 &self.structure[0, 0],
                 rv, fv)
 
-            print(np.asarray(rv), np.asarray(fv))
             for i in range(3):
                 self.forces[p1, i] = self.forces[p1, i] + fv[i]
                 self.forces[p2, i] = self.forces[p2, i] - fv[i]
@@ -479,13 +508,14 @@ cdef class System:
     def step(self, Py_ssize_t n):
         """Perform n MD simulation steps"""
 
-        cdef Py_ssize_t i
+        self._step = 0
 
-        for i in range(1, n + 1):
+        for self._step in range(1, n + 1):
+            # Evaluate forces
             for force in self.force_list:
                 self.evaluate_force(force)
-            # self.evaluate_forces(&rv[0], &fv[0])
 
+            # Propagate
             self.driver.update(
                 self.n_atoms,
                 self.structure,
@@ -495,7 +525,10 @@ cdef class System:
                 self.forces
             )
 
+            # Periodic boundary conditions
             self.apply_pbc()
 
-            if not i % self.reporter.interval:
-                self.reporter.report(self)
+            # Report
+            for reporter in self.reporters:
+                if not self._step % reporter.interval:
+                    reporter.report(self)
