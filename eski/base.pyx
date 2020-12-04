@@ -213,7 +213,6 @@ cdef class ForceLJ(Force):
 
 
 FORCE_ID_NAME_MAPPING = {
-    0: "Atomtypes",    # Technically not a force, but in the forcefield
     1: "HarmonicBond",
     2: "LJ",
     99: "Force",
@@ -248,8 +247,7 @@ cdef class IntegratorEuler:
             AINDEX n_atoms,
             AVALUE[:, ::1] structure,
             AVALUE[:, ::1] velocities,
-            topology,
-            atomtypes,
+            AVALUE[::1] masses,
             AVALUE[:, ::1] forces):
         """Perform Euler step
 
@@ -261,13 +259,11 @@ cdef class IntegratorEuler:
 
         cdef AINDEX index
         cdef AINDEX d
-        cdef AVALUE mass
 
         for index in range(n_atoms):
-            mass = atomtypes[topology[index]][0]
             for d in range(3):
-                structure[index, d] = structure[index, d] + velocities[index, d] * self.dt + forces[index, d] * 1.661e-12 * self.dt**2 / (2 * mass)
-                velocities[index, d] = velocities[index, d] + forces[index, d] * self.dt / mass
+                structure[index, d] = structure[index, d] + velocities[index, d] * self.dt + forces[index, d] * 1.661e-12 * self.dt**2 / (2 * masses[index])
+                velocities[index, d] = velocities[index, d] + forces[index, d] * self.dt / masses[index]
 
 
 cdef class Reporter:
@@ -317,22 +313,53 @@ cdef class PrintReporter(Reporter):
 
 
 cdef class LogReporter(Reporter):
-    """A reporter that prints information to log file"""
+    """A reporter that prints information to a log file"""
+
+    cdef str file
+    cdef bint initialised
+
+    def __cinit__(self, interval, file):
+        self.interval = interval
+        self.file = file
+        self.initialised = 0
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(interval={self.interval}, file={self.file})"
+
+    cpdef void report(self, System system):
+        if self.initialised:
+            with open(self.file, "a") as logfile:
+                logfile.write(f"{system._step}\n")
+        else:
+            with open(self.file, "w") as logfile:
+                logfile.write("Step    Performance\n")
+                logfile.write(f"{system._step}\n")
+            self.initialised = True
+
+    @property
+    def file(self):
+        return self.file
+
+
+cdef class XYZReporter(Reporter):
+    """A reporter that writes structures to a xyz-file"""
 
     cdef str file
 
     def __cinit__(self, interval, file):
         self.interval = interval
         self.file = file
-        with open(self.file, "w") as logfile:
-           logfile.write("Step    Performance\n")
 
     def __repr__(self):
         return f"{self.__class__.__name__}(interval={self.interval}, file={self.file})"
 
     cpdef void report(self, System system):
-        with open(self.file, "a") as logfile:
-            logfile.write(f"{system._step}\n")
+        with open(self.file, "a") as xyzfile:
+           xyzfile.write(f"{system.n_atoms}\n")
+           xyzfile.write(f"Atomic structure at step = {system._step}, automatically written by Eski\n")
+           for index, position in enumerate(system.structure):
+               xyzfile.write(f'{system.topology["element"][index]}    ')
+               xyzfile.write(f"{position[0]:2.10f}    {position[1]:2.10f}    {position[2]:2.10f}\n")
 
     @property
     def file(self):
@@ -343,22 +370,25 @@ cdef class System:
     """MD system
 
     A system associates a molecular structure (atom positions of one
-    or more molecules), particles velocities and a molecular topology
+    or more molecules), particle velocities and a molecular topology
     with a set of forces
     (bonds, angles etc.) to evaluate.  Also included is a driver, that
     is a dynamical integrator which propagates positions and velocities.
     A reporter can be used to communicate data during a simulation.
     """
 
-    cdef AVALUE[:, ::1] structure   # Atom positions
-    cdef AVALUE[:, ::1] velocities  # Atom velocities
-    cdef AINDEX[::1] topology       # Atom types
+    cdef AVALUE[:, ::1] _structure    # Atom positions
+    cdef AVALUE[:, ::1] _velocities   # Atom velocities
+    cdef dict topology                # Topology
+    cdef AINDEX[::1] atomtypes        # Atom types (IDs)
     cdef dict ATOM_ID_TYPE_MAPPING
     cdef dict ATOM_TYPE_ID_MAPPING
     cdef AVALUE[:, ::1] box
     cdef AVALUE[:, ::1] boxinv
 
     cdef AINDEX n_atoms             # Number of atoms
+    cdef AVALUE[::1] masses         # Atom types
+    cdef AVALUE[::1] charges        # Atom types
     cdef dict force_map             # Forces to evaluate
     cdef list force_list            # List of Force instances
     cdef dict forcefield
@@ -367,21 +397,26 @@ cdef class System:
     cdef list reporters             # Data reporters
 
     cdef Py_ssize_t _step
+    cdef AVALUE[::1] rv
+    cdef AVALUE[::1] fv
 
     def __cinit__(
             self,
             structure,   # Initial structure
             velocities,  # Initial velocities
-            topology,    # Particle types, masses, charges
+            topology,    # Particle types, names, elements, residues
             box,         # Box vectors as columns of a matrix
+            masses,      # 
+            charges,     #
             force_map,   # Forces to evaluate
             forcefield,  # Dicttionary defining forcefield parameters
             driver,      # MD integrator
             reporters):   # Data reporter
-        self.structure = np.copy(structure)     # Preserve input structure
-        self.velocities = np.copy(velocities)   #                velocities
-        self.n_atoms = self.structure.shape[0]
-
+        self._structure = np.copy(structure)     # Preserve input structure
+        self._velocities = np.copy(velocities)   #                velocities
+        self.n_atoms = structure.shape[0]
+        self.masses = masses
+        self.charges = charges
         self.make_topology(topology)
         self.make_forces(force_map, forcefield)
         self.forces = np.zeros_like(structure)  # Initialise force container
@@ -391,28 +426,40 @@ cdef class System:
         self.reporters = reporters
 
         self._step = 0
-
-        # print(self.structure)
-        # print(self.box)
-        # print(self.force_map)
-        # print(self.force_list)
-        # print(self.forcefield)
+        self.rv  = np.zeros(3)  # Reserved space for distance vector
+        self.fv  = np.zeros(3)  #                    force vector
 
     def __repr__(self):
         return f"{self.__class__.__name__}(n_atoms={self.n_atoms}, driver={self.driver})"
 
-    def make_topology(self, list topology):
+    @property
+    def structure(self):
+        return np.asarray(self._structure)
+
+    @property
+    def velocities(self):
+        return np.asarray(self._velocities)
+
+    def make_topology(self, dict topology):
+        self.topology = topology
+
         atomtype_id = 0
         self.ATOM_TYPE_ID_MAPPING = {}
-        for atom in topology:
+        for atom in topology["type"]:
             if atom in self.ATOM_TYPE_ID_MAPPING:
                 continue
             self.ATOM_TYPE_ID_MAPPING[atom] = atomtype_id
             atomtype_id += 1
 
-        self.ATOM_ID_TYPE_MAPPING = {v: k for k, v in self.ATOM_TYPE_ID_MAPPING.items()}
+        self.ATOM_ID_TYPE_MAPPING = {
+            v: k
+            for k, v in self.ATOM_TYPE_ID_MAPPING.items()
+            }
 
-        self.topology = np.asarray([self.ATOM_TYPE_ID_MAPPING[x] for x in topology])
+        self.atomtypes = np.asarray([
+            self.ATOM_TYPE_ID_MAPPING[x]
+            for x in topology["type"]
+            ])
 
     def make_forces(self, force_map, forcefield):
         self.force_map = {
@@ -453,32 +500,33 @@ cdef class System:
                 self.forces[i, j] = 0
 
     def evaluate_force(self, FORCE force):
-        cdef AVALUE[::1] rv = np.zeros(3)
-        cdef AVALUE[::1] fv = np.zeros(3)
+        self._evaluate_force(force)
 
-        self._evaluate_force(force, &rv[0], &fv[0])
-
-    cdef void _evaluate_force(self, FORCE force, AVALUE *rv, AVALUE *fv):
+    cdef void _evaluate_force(self, FORCE force):
         cdef AINDEX i
         cdef AINDEX p1, p2, at1, at2
         cdef AVALUE r0, k, s1, s2, e1, e2
 
         if FORCE is ForceHarmonicBond:
             for p1, p2  in self.force_map[force._id]:
-                at1 = self.topology[p1]
-                at2 = self.topology[p2]
+                at1 = self.atomtypes[p1]
+                at2 = self.atomtypes[p2]
                 r0 = self.forcefield[force._id][(at1, at2)][0]
                 k = self.forcefield[force._id][(at1, at2)][1]
 
-            force.force(p1, p2, r0, k, &self.structure[0, 0], rv, fv)
+            force.force(
+                p1, p2, r0, k,
+                &self._structure[0, 0],
+                &self.rv[0], &self.fv[0]
+                )
             for i in range(3):
-                self.forces[p1, i] = self.forces[p1, i] + fv[i]
-                self.forces[p2, i] = self.forces[p2, i] - fv[i]
+                self.forces[p1, i] = self.forces[p1, i] + self.fv[i]
+                self.forces[p2, i] = self.forces[p2, i] - self.fv[i]
 
         elif FORCE is ForceLJ:
             for p1, p2 in self.force_map[force._id]:
-                at1 = self.topology[p1]
-                at2 = self.topology[p2]
+                at1 = self.atomtypes[p1]
+                at2 = self.atomtypes[p2]
                 s1 = self.forcefield[force._id][at1][0]
                 s2 = self.forcefield[force._id][at2][0]
                 e1 = self.forcefield[force._id][at1][1]
@@ -488,22 +536,23 @@ cdef class System:
 
             force.force(
                 p1, p2, at1, at2, s1, s2, e1, e2,
-                &self.structure[0, 0],
-                rv, fv)
+                &self._structure[0, 0],
+                &self.rv[0], &self.fv[0]
+                )
 
             for i in range(3):
-                self.forces[p1, i] = self.forces[p1, i] + fv[i]
-                self.forces[p2, i] = self.forces[p2, i] - fv[i]
+                self.forces[p1, i] = self.forces[p1, i] + self.fv[i]
+                self.forces[p2, i] = self.forces[p2, i] - self.fv[i]
 
     def apply_pbc(self):
         # Convert positions to fractial coordinates
-        fractial = np.dot(self.boxinv, self.structure.T)
+        fractial = np.dot(self.boxinv, self._structure.T)
 
         # Put particles back in the box
         fractial_pbc = fractial - np.floor(fractial)
 
         # Convert back to real positions
-        self.structure = np.asarray(np.dot(self.box, fractial_pbc).T, order="c", dtype=np.float64)
+        self._structure = np.asarray(np.dot(self.box, fractial_pbc).T, order="c", dtype=np.float64)
 
     def step(self, Py_ssize_t n):
         """Perform n MD simulation steps"""
@@ -518,10 +567,9 @@ cdef class System:
             # Propagate
             self.driver.update(
                 self.n_atoms,
-                self.structure,
-                self.velocities,
-                self.topology,
-                self.forcefield[0],
+                self._structure,
+                self._velocities,
+                self.masses,
                 self.forces
             )
 
