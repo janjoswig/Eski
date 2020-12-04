@@ -329,6 +329,8 @@ cdef class System:
     cdef AINDEX[::1] topology       # Atom types
     cdef dict ATOM_ID_TYPE_MAPPING
     cdef dict ATOM_TYPE_ID_MAPPING
+    cdef AVALUE[:, ::1] box
+    cdef AVALUE[:, ::1] boxinv
 
     cdef AINDEX n_atoms             # Number of atoms
     cdef dict force_map             # Forces to evaluate
@@ -343,8 +345,9 @@ cdef class System:
             structure,   # Initial structure
             velocities,  # Initial velocities
             topology,    # Particle types, masses, charges
+            box,         # Box vectors as columns of a matrix
             force_map,   # Forces to evaluate
-            forcefield,
+            forcefield,  # Dicttionary defining forcefield parameters
             driver,      # MD integrator
             reporter):   # Data reporter
         self.structure = np.copy(structure)     # Preserve input structure
@@ -354,9 +357,16 @@ cdef class System:
         self.make_topology(topology)
         self.make_forces(force_map, forcefield)
         self.forces = np.zeros_like(structure)  # Initialise force container
-
+        self.box = np.copy(box)
+        self.boxinv = np.linalg.inv(box)
         self.driver = driver
         self.reporter = reporter
+
+        # print(self.structure)
+        # print(self.box)
+        # print(self.force_map)
+        # print(self.force_list)
+        # print(self.forcefield)
 
     def __repr__(self):
         return f"{self.__class__.__name__}(n_atoms={self.n_atoms}, driver={self.driver})"
@@ -412,14 +422,6 @@ cdef class System:
             for j in range(3):
                 self.forces[i, j] = 0
 
-    # def void evaluate_forces(self, AVALUE *rv, AVALUE *fv):
-    #     """Evaluate force vector acting on each atom"""
-    #
-    #    self.reset_forces()
-    #
-    #     for force in self.force_list:
-    #         self._evaluate_force(force, rv, fv)
-
     def evaluate_force(self, FORCE force):
         cdef AVALUE[::1] rv = np.zeros(3)
         cdef AVALUE[::1] fv = np.zeros(3)
@@ -428,8 +430,8 @@ cdef class System:
 
     cdef void _evaluate_force(self, FORCE force, AVALUE *rv, AVALUE *fv):
         cdef AINDEX i
-        cdef AINDEX p1, p2, at1, at2, s1, s2, e1, e2
-        cdef AVALUE r0, k
+        cdef AINDEX p1, p2, at1, at2
+        cdef AVALUE r0, k, s1, s2, e1, e2
 
         if FORCE is ForceHarmonicBond:
             for p1, p2  in self.force_map[force._id]:
@@ -452,13 +454,27 @@ cdef class System:
                 e1 = self.forcefield[force._id][at1][1]
                 e2 = self.forcefield[force._id][at2][1]
 
+                # print("Force parameters:\n", p1, p2, at1, at2, s1, s2, e1, e2)
+
             force.force(
                 p1, p2, at1, at2, s1, s2, e1, e2,
                 &self.structure[0, 0],
                 rv, fv)
+
+            print(np.asarray(rv), np.asarray(fv))
             for i in range(3):
                 self.forces[p1, i] = self.forces[p1, i] + fv[i]
                 self.forces[p2, i] = self.forces[p2, i] - fv[i]
+
+    def apply_pbc(self):
+        # Convert positions to fractial coordinates
+        fractial = np.dot(self.boxinv, self.structure.T)
+
+        # Put particles back in the box
+        fractial_pbc = fractial - np.floor(fractial)
+
+        # Convert back to real positions
+        self.structure = np.asarray(np.dot(self.box, fractial_pbc).T, order="c", dtype=np.float64)
 
     def step(self, Py_ssize_t n):
         """Perform n MD simulation steps"""
@@ -478,5 +494,8 @@ cdef class System:
                 self.forcefield[0],
                 self.forces
             )
+
+            self.apply_pbc()
+
             if not i % self.reporter.interval:
                 self.reporter.report(self)
