@@ -6,7 +6,7 @@ import numpy as np
 
 extensions = [
     Extension(
-        "eski.base", ["eski/base.pyx"],
+        "eski.md", ["eski/md.pyx"],
         define_macros=[("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")],
         language="c++",
         include_dirs=[np.get_include()]
