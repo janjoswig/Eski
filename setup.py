@@ -1,7 +1,6 @@
 from setuptools import setup, find_packages, Extension
 
 from Cython.Build import cythonize
-from Cython.Distutils import build_ext
 import numpy as np
 
 extensions = [
@@ -19,7 +18,8 @@ compiler_directives = {
     "boundscheck": False,
     "wraparound": False,
     "cdivision": True,
-    "nonecheck": False
+    "nonecheck": False,
+    "linetrace": True
     }
 
 extensions = cythonize(extensions, compiler_directives=compiler_directives)
@@ -32,5 +32,4 @@ setup(
     author_email="jan.joswig@fu-berlin.de",
     packages=find_packages(),
     ext_modules=extensions,
-    cmdclass=dict(build_ext=build_ext)
 )

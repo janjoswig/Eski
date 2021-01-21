@@ -205,7 +205,7 @@ cdef class ForceLJ(Force):
             e = csqrt(e1 * e2)
 
         # Force
-        f = 48 * e * (cpow(s, 12) / cpow(r, 13) - cpow(s, 6) / cpow(r, 7)) # 4ϵ[σ12r12−σ6r6]
+        f = 24 * e * (2 * cpow(s, 12) / cpow(r, 13) - cpow(s, 6) / cpow(r, 7)) # 4ϵ[σ12r12−σ6r6]
         for i in range(3):
             fv[i] = f * rv[i] / r
 
@@ -406,7 +406,7 @@ cdef class System:
             velocities,  # Initial velocities
             topology,    # Particle types, names, elements, residues
             box,         # Box vectors as columns of a matrix
-            masses,      # 
+            masses,      #
             charges,     #
             force_map,   # Forces to evaluate
             forcefield,  # Dicttionary defining forcefield parameters
