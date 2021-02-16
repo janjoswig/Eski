@@ -34,6 +34,16 @@ cdef class Force:
         AINDEX _dindex, _dparam
         AINDEX _n_indices, _n_parameters
 
+    cpdef void add_contributions(self, System system)
+
+    cdef void _add_contribution(
+            self,
+            AINDEX index,
+            AVALUE *structure,
+            AVALUE *forcevectors,
+            AVALUE *rv,
+            AVALUE *fv) nogil
+
 
 cdef class Driver:
     cdef:

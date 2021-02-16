@@ -35,7 +35,7 @@ class TestSystem:
 
     def test_fail_allocation_bad_natoms(self):
         with pytest.raises(AssertionError):
-            system = md.System(
+            md.System(
                 structure=np.zeros((1, 3), dtype=np.float),
                 atoms=[md.Atom() for _ in range(10)]
             )
@@ -70,13 +70,30 @@ class TestForce:
     @pytest.mark.parametrize(
         "Force,indices,parameters",
         [
-            (md.Force, (1, 2, 3), (0.1, 0.1, 0.1)),
-            (md.ForceHarmonicBond, (1, 2), (0.1, 0.5))
+            pytest.param(md.Force, [1, 2, 3], [], marks=[]),
+            pytest.param(
+                md.Force, [1, 2, 3], [1.0],
+                marks=pytest.mark.raises(exception=ValueError)
+                ),
+            pytest.param(
+                md.ForceHarmonicBond, (1, 2, 3), (0.1, 0.5),
+                marks=pytest.mark.raises(exception=ValueError)
+                ),
+            pytest.param(
+                md.ForceHarmonicBond, (1, 2), (0.1, 0.5, 0.4),
+                marks=pytest.mark.raises(exception=ValueError)
+                ),
+            (md.ForceHarmonicBond, [1, 2], [0.1, 0.5])
         ]
     )
     def test_create(self, Force, indices, parameters):
         force = Force(indices, parameters)
         assert isinstance(str(force), str)
+        assert isinstance(force.id, int)
+        assert isinstance(force.n_interactions, int)
+
+    def test_get_interaction(self):
+        force = md.ForceHarmonicBond((1, 2), (0.1, 0.5))
 
 
 @pytest.mark.parametrize(

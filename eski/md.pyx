@@ -7,6 +7,7 @@ cimport numpy as np
 from libc.math cimport sqrt as csqrt, pow as cpow
 from libc.stdlib cimport malloc, free
 
+
 P_AVALUE = np.float64
 P_AINDEX = np.intp
 
@@ -55,14 +56,24 @@ cdef class Atom:
 
 
 cdef class Force:
-    """Base class for force to evaluate"""
+    """Base class for force to evaluate
 
-    def __cinit__(self, indices, parameters, **kwargs):
-        self._id = 0
-        self.group = 0
+    If Cython supported abstract classes and/or virtual methods, this
+    would be an abstract base class for the force interface.  This
+    class is not meant to be initialised.
 
-        self._dindex = 1
-        self._dparam = 1
+    Args:
+        indices: Iterable of particle indices for which this force
+            should be evaluated.
+        parameters: Iterable of force parameters.
+    """
+
+    def __cinit__(
+            self,
+            indices: Iterable[int],
+            parameters: Iterable[float],
+            *args,
+            **kwargs):
 
         self._n_indices = len(indices)
         self._n_parameters = len(parameters)
@@ -88,6 +99,15 @@ cdef class Force:
         for i, param in enumerate(parameters):
             self._parameters[i] = param
 
+    def __init__(self, *args, **kwargs):
+        self.group = 0
+
+        self._id = 0
+        self._dindex = 1
+        self._dparam = 0
+
+        self._check_index_param_consistency()
+
     def __repr__(self):
         return f"{self.__class__.__name__}(group={self.group})"
 
@@ -109,22 +129,54 @@ cdef class Force:
     def _check_index_param_consistency(self):
         """Raise error if indices and parameters do not match"""
 
-        index_wrong = ((self._n_indices % self._dindex) > 0)
-        param_wrong = ((self._n_parameters % self._dparam) > 0)
-        dont_match = (
-            (self._n_indices / self._dindex)
-            != (self._n_parameters / self._dparam)
+        if (self._n_indices % self._dindex) > 0:
+            raise ValueError(
+                f"Wrong number of 'indices'; must be multiple of {self._dindex}"
+                )
+
+        if self._dparam == 0:
+            if self._n_parameters == 0:
+                return
+            raise ValueError(
+                "Force takes no parameters"
+                )
+
+        if (self._n_parameters % self._dparam) > 0:
+            raise ValueError(
+                f"Wrong number of 'parameters'; must be multiple of {self._dparam}"
+                )
+
+        len_no_match = (
+            (self._n_indices / self._dindex) !=
+            (self._n_parameters / self._dparam)
         )
-        if index_wrong or param_wrong or dont_match:
+        if len_no_match:
             raise ValueError(
                 "Length of 'indices' and 'parameters' does not match"
                 )
+
+    def get_interaction(self, AINDEX index):
+        raise NotImplementedError
+
+    cpdef void add_contributions(self, System system):
+        raise NotImplementedError
+
+    cdef void _add_contribution(
+            self,
+            AINDEX index,
+            AVALUE *structure,
+            AVALUE *forcevectors,
+            AVALUE *rv,
+            AVALUE *fv) nogil:
+        raise NotImplementedError
 
 
 cdef class ForceHarmonicBond(Force):
     """Harmonic spring force approximating a chemical bond"""
 
-    def __cinit__(self, indices, parameters, **kwargs):
+    def __init__(self, *args, **kwargs):
+        self.group = 0
+
         self._id = 1
         self._dindex = 2
         self._dparam = 2
@@ -154,6 +206,18 @@ cdef class ForceHarmonicBond(Force):
             "k": self._parameters[index * self._dparam + 1]
             }
         return info
+
+    cpdef void add_contributions(self, System system):
+        cdef AINDEX index
+
+        for index in range(self._n_indices / self._dindex):
+            self._add_contribution(
+                index,
+                &system._structure[0, 0],
+                &system._forcevectors[0, 0],
+                &system.rv[0],
+                &system.fv[0]
+                )
 
     cdef void _add_contribution(
             self,
@@ -197,18 +261,6 @@ cdef class ForceHarmonicBond(Force):
             fv2[i] -= fv[i]
 
         return
-
-    cpdef void add_contributions(self, System system):
-        cdef AINDEX index
-
-        for index in range(self._n_indices / self._dindex):
-            self._add_contribution(
-                index,
-                &system._structure[0, 0],
-                &system._forcevectors[0, 0],
-                &system.rv[0],
-                &system.fv[0]
-                )
 
 
 cdef class Driver:
