@@ -75,15 +75,13 @@ cdef class Force:
     def __cinit__(
             self,
             indices: Iterable[int],
-            parameters: Iterable[float],
-            *args,
-            **kwargs):
-
-        self._n_indices = len(indices)
-        self._n_parameters = len(parameters)
+            parameters: Iterable[float]):
 
         cdef AINDEX i, index
         cdef AVALUE param
+
+        self._n_indices = len(indices)
+        self._n_parameters = len(parameters)
 
         self._indices = <AINDEX*>malloc(
             self._n_indices * sizeof(AINDEX)
@@ -120,7 +118,13 @@ cdef class Force:
         self._check_index_param_consistency()
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(group={self.group})"
+        attr_repr = ", ".join(
+            [
+                f"group={self.group}",
+                f"n_interactions={self.n_interactions}"
+            ]
+        )
+        return f"{self.__class__.__name__}({attr_repr})"
 
     @property
     def id(self):
@@ -299,7 +303,10 @@ cdef class Driver:
 
     _param_names = []
 
-    def __cinit__(self, parameters: Iterable[float], *args, **kwargs):
+    def __cinit__(self, parameters: Iterable[float]):
+
+        cdef AINDEX i
+        cdef AVALUE param
 
         self._n_parameters = len(parameters)
 
@@ -309,32 +316,65 @@ cdef class Driver:
         if self._parameters == NULL:
             raise MemoryError()
 
+        for i, param in enumerate(parameters):
+            self._parameters[i] = param
+
     def __dealloc__(self):
 
         if self._parameters != NULL:
             free(self._parameters)
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         self._dparam = 0
-
         self._check_param_consistency()
+
+    def __repr__(self):
+        param_repr = ", ".join(
+            [
+                f"{name}={value}"
+                for name, value in self.parameters.items()
+            ]
+        )
+        return f"{self.__class__.__name__}({param_repr})"
 
     @classmethod
     def from_mapping(cls, parameters: Mapping[str, float]):
-        raise NotImplementedError
+        parameter_list = []
+        for name in cls._param_names:
+            parameter_list.append(parameters[name])
+
+        return cls(parameter_list)
+
+    @property
+    def parameters(self):
+        pgenerator = (
+            self._parameters[index]
+            for index in range(self._n_parameters)
+            )
+        return dict(zip(self._param_names, pgenerator))
 
     cdef void update(self, System system):
-        pass
+        NotImplemented
 
     def _check_param_consistency(self):
         if self._n_parameters != self._dparam:
-           raise ValueError
+            numerus_expect = "parameter" if self._dparam == 1 else "parameters"
+            numerus_given = "was" if self._n_parameters == 1 else "were"
+
+            raise ValueError(
+                f"driver {type(self).__name__!r} "
+                f"takes {self._dparam} {numerus_expect} "
+                f"but {self._n_parameters} {numerus_given} given"
+                )
+
 
 cdef class EulerIntegrator(Driver):
 
+    _param_names = ["dt"]
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}(dt={self._parameters[0]})"
+    def __init__(self, *args, **kwargs):
+        self._dparam = 1
+        self._check_param_consistency()
 
     cdef void update(self, System system):
 
@@ -449,7 +489,7 @@ cdef class System:
     def box(self):
         return np.asarray(self._box)
 
-    def __str__(self):
+    def __repr__(self):
         if self.desc == "":
             desc_str = ""
         else:

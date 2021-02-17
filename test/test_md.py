@@ -11,7 +11,7 @@ class TestSystem:
         ["Dummy", "Argon"]
         )
     def test_create_with_data(
-            self, registered_system_key, registered_system):
+            self, registered_system_key, registered_system, file_regression):
         if registered_system.atoms is not None:
             registered_system.atoms = [
                 md.Atom(*args, **kwargs)
@@ -31,7 +31,7 @@ class TestSystem:
         assert system.structure.shape == system.forcevectors.shape
         assert system.structure.shape[0] == system.n_atoms
 
-        assert isinstance(str(system), str)
+        file_regression.check(repr(system))
 
     def test_fail_allocation_bad_natoms(self):
         with pytest.raises(AssertionError):
@@ -90,11 +90,10 @@ class TestForce:
             (md.ForceHarmonicBond, [1, 2], [0.1, 0.5])
         ]
     )
-    def test_create(self, Force, indices, parameters):
+    def test_create(self, Force, indices, parameters, file_regression):
         force = Force(indices, parameters)
-        assert isinstance(str(force), str)
+        file_regression.check(repr(force))
         assert isinstance(force.id, int)
-        assert isinstance(force.n_interactions, int)
 
     @pytest.mark.parametrize(
         "Force,forces",
@@ -110,9 +109,7 @@ class TestForce:
     )
     def test_create_from_mappings(self, Force, forces):
         force = Force.from_mappings(forces)
-        assert isinstance(str(force), str)
-        assert isinstance(force.id, int)
-        assert isinstance(force.n_interactions, int)
+        assert isinstance(force, Force)
 
     @pytest.mark.parametrize(
         "Force,indices,parameters,i,expected",
@@ -159,6 +156,20 @@ class TestForce:
         num_regression.check({
             "forces": system.forcevectors.flatten()
             })
+
+
+class TestDriver:
+
+    @pytest.mark.parametrize(
+        "Driver,parameters",
+        [
+            (md.Driver, []),
+            (md.EulerIntegrator, [0.1]),
+        ]
+    )
+    def test_create(self, Driver, parameters, file_regression):
+        driver = Driver(parameters)
+        file_regression.check(repr(driver))
 
 
 @pytest.mark.parametrize(
