@@ -164,12 +164,27 @@ class TestDriver:
         "Driver,parameters",
         [
             (md.Driver, []),
+            pytest.param(
+                md.Driver, [0],
+                marks=pytest.mark.raises(exception=ValueError)
+                ),
             (md.EulerIntegrator, [0.1]),
         ]
     )
     def test_create(self, Driver, parameters, file_regression):
         driver = Driver(parameters)
         file_regression.check(repr(driver))
+
+    @pytest.mark.parametrize(
+        "Driver,parameters",
+        [
+            (md.Driver, {}),
+            (md.EulerIntegrator, {"dt": 0.1}),
+        ]
+    )
+    def test_create_from_mapping(self, Driver, parameters):
+        driver = Driver.from_mapping(parameters)
+        assert isinstance(driver, Driver)
 
 
 @pytest.mark.parametrize(
