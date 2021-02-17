@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from eski import md
+from eski import md, forces, drivers, metrics
 
 
 class TestSystem:
@@ -70,24 +70,24 @@ class TestForce:
     @pytest.mark.parametrize(
         "Force,indices,parameters",
         [
-            (md.Force, [1, 2, 3], []),
+            (forces.Force, [1, 2, 3], []),
             pytest.param(
-                md.Force, [1, 2, 3], [1.0],
+                forces.Force, [1, 2, 3], [1.0],
                 marks=pytest.mark.raises(exception=ValueError)
                 ),
             pytest.param(
-                md.ForceHarmonicBond, [1, 2, 3], [0.1, 0.5],
+                forces.ForceHarmonicBond, [1, 2, 3], [0.1, 0.5],
                 marks=pytest.mark.raises(exception=ValueError)
                 ),
             pytest.param(
-                md.ForceHarmonicBond, [1, 2], [0.1, 0.5, 0.4],
+                forces.ForceHarmonicBond, [1, 2], [0.1, 0.5, 0.4],
                 marks=pytest.mark.raises(exception=ValueError)
                 ),
             pytest.param(
-                md.ForceHarmonicBond, [1, 2], [0.1, 0.5, 0.4, 0.3],
+                forces.ForceHarmonicBond, [1, 2], [0.1, 0.5, 0.4, 0.3],
                 marks=pytest.mark.raises(exception=ValueError)
                 ),
-            (md.ForceHarmonicBond, [1, 2], [0.1, 0.5])
+            (forces.ForceHarmonicBond, [1, 2], [0.1, 0.5])
         ]
     )
     def test_create(self, Force, indices, parameters, file_regression):
@@ -98,10 +98,10 @@ class TestForce:
     @pytest.mark.parametrize(
         "Force,forces",
         [
-            (md.Force, [{"p1": 0}, {"p1": 1}]),
-            (md.ForceHarmonicBond, [{"p1": 0, "p2": 1, "r0": 0.1, "k": 0.2}]),
+            (forces.Force, [{"p1": 0}, {"p1": 1}]),
+            (forces.ForceHarmonicBond, [{"p1": 0, "p2": 1, "r0": 0.1, "k": 0.2}]),
             pytest.param(
-                md.ForceHarmonicBond,
+                forces.ForceHarmonicBond,
                 [{"p1": 0, "p2": 1, "r0": 0.1}],
                 marks=pytest.mark.raises(exception=KeyError)
                 )
@@ -115,15 +115,15 @@ class TestForce:
         "Force,indices,parameters,i,expected",
         [
             (
-                md.ForceHarmonicBond, [1, 2], [0.1, 0.2], 0,
+                forces.ForceHarmonicBond, [1, 2], [0.1, 0.2], 0,
                 {"p1": 1, "p2": 2, "r0": 0.1, "k": 0.2}
             ),
             pytest.param(
-                md.ForceHarmonicBond, [1, 2], [0.1, 0.2], 1,
+                forces.ForceHarmonicBond, [1, 2], [0.1, 0.2], 1,
                 None, marks=pytest.mark.raises(exception=IndexError)
             ),
             pytest.param(
-                md.Force, [0], [], 0, {"p1": 0}
+                forces.Force, [0], [], 0, {"p1": 0}
             )
         ]
     )
@@ -134,10 +134,10 @@ class TestForce:
     @pytest.mark.parametrize(
         "Force,indices,parameters",
         [
-            (md.ForceHarmonicBond, [0, 1], [0.1, 0.1]),
-            (md.ForceHarmonicBond, [0, 1, 2, 3], [0.1, 0.1, 0.2, 0.1]),
+            (forces.ForceHarmonicBond, [0, 1], [0.1, 0.1]),
+            (forces.ForceHarmonicBond, [0, 1, 2, 3], [0.1, 0.1, 0.2, 0.1]),
             (
-                md.ForceHarmonicBond,
+                forces.ForceHarmonicBond,
                 [0, 1, 0, 2, 2, 3],
                 [0.1, 0.1, 0.2, 0.2, 0.2, 0.1]
             )
@@ -163,12 +163,12 @@ class TestDriver:
     @pytest.mark.parametrize(
         "Driver,parameters",
         [
-            (md.Driver, []),
+            (drivers.Driver, []),
             pytest.param(
-                md.Driver, [0],
+                drivers.Driver, [0],
                 marks=pytest.mark.raises(exception=ValueError)
                 ),
-            (md.EulerIntegrator, [0.1]),
+            (drivers.EulerIntegrator, [0.1]),
         ]
     )
     def test_create(self, Driver, parameters, file_regression):
@@ -178,8 +178,8 @@ class TestDriver:
     @pytest.mark.parametrize(
         "Driver,parameters",
         [
-            (md.Driver, {}),
-            (md.EulerIntegrator, {"dt": 0.1}),
+            (drivers.Driver, {}),
+            (drivers.EulerIntegrator, {"dt": 0.1}),
         ]
     )
     def test_create_from_mapping(self, Driver, parameters):
@@ -198,4 +198,4 @@ class TestDriver:
 def test_euclidean_distance(p1, p2, distance):
     p1 = np.array(p1, dtype=np.float64)
     p2 = np.array(p2, dtype=np.float64)
-    assert distance == md.euclidean_distance(p1, p2)
+    assert distance == metrics.euclidean_distance(p1, p2)
