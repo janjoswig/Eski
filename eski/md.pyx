@@ -1,5 +1,6 @@
 from numbers import Integral
-from typing import Iterable
+from typing import Iterable, Mapping
+from typing import Union
 
 import numpy as np
 cimport numpy as np
@@ -68,6 +69,8 @@ cdef class Force:
         parameters: Iterable of force parameters.
     """
 
+    _param_names = ["p1"]
+
     def __cinit__(
             self,
             indices: Iterable[int],
@@ -99,6 +102,13 @@ cdef class Force:
         for i, param in enumerate(parameters):
             self._parameters[i] = param
 
+    def __dealloc__(self):
+        if self._indices != NULL:
+            free(self._indices)
+
+        if self._parameters != NULL:
+            free(self._parameters)
+
     def __init__(self, *args, **kwargs):
         self.group = 0
 
@@ -119,12 +129,9 @@ cdef class Force:
     def n_interactions(self):
         return self._n_indices / self._dindex
 
-    def __dealloc__(self):
-        if self._indices != NULL:
-            free(self._indices)
-
-        if self._parameters != NULL:
-            free(self._parameters)
+    @classmethod
+    def from_mappings(cls, forces: Iterable[Mapping[str, Union[float, int]]]):
+        raise NotImplementedError
 
     def _check_index_param_consistency(self):
         """Raise error if indices and parameters do not match"""
@@ -156,7 +163,22 @@ cdef class Force:
                 )
 
     def get_interaction(self, AINDEX index):
-        raise NotImplementedError
+        self._check_interaction_index(index)
+
+        info = dict(zip(
+            self._param_names,
+            [
+                self._indices[index * self._dindex],
+            ]
+        ))
+
+        return info
+
+    def _check_interaction_index(self, AINDEX index):
+        if (index < 0) or (index >= self.n_interactions):
+            raise IndexError(
+                "Interaction index out of range"
+                )
 
     cpdef void add_contributions(self, System system):
         NotImplemented
@@ -173,6 +195,8 @@ cdef class Force:
 
 cdef class ForceHarmonicBond(Force):
     """Harmonic spring force approximating a chemical bond"""
+
+    _param_names = ["p1", "p2", "r0", "k"]
 
     def __init__(self, *args, **kwargs):
         self.group = 0
@@ -194,17 +218,17 @@ cdef class ForceHarmonicBond(Force):
                 k: Force constanct (kJ / (mol nm**2))
         """
 
-        if (index < 0) or (index >= self.n_interactions):
-            raise IndexError(
-                "Interaction index out of range"
-                )
+        self._check_interaction_index(index)
 
-        info = {
-            "p1": self._indices[index * self._dindex],
-            "p2": self._indices[index * self._dindex + 1],
-            "r0": self._parameters[index * self._dparam],
-            "k": self._parameters[index * self._dparam + 1]
-            }
+        info = dict(zip(
+            self._param_names,
+            [
+                self._indices[index * self._dindex],
+                self._indices[index * self._dindex + 1],
+                self._parameters[index * self._dparam],
+                self._parameters[index * self._dparam + 1]
+            ]
+        ))
 
         return info
 
@@ -266,30 +290,51 @@ cdef class ForceHarmonicBond(Force):
 
 
 cdef class Driver:
+    """Base class for drivers to propagate
 
-    def __cinit__(self, **kwargs):
-        pass
+    If Cython supported abstract classes and/or virtual methods, this
+    would be an abstract base class for the driver interface.  This
+    class is not meant to be initialised.
 
-    cdef void update(self, System system):
-        pass
+    Args:
+        parameters: Iterable of driver parameters
+    """
 
+    _param_names = []
 
-cdef class EulerIntegrator(Driver):
+    def __cinit__(self, parameters: Iterable[float], *args, **kwargs):
 
-    def __cinit__(self, **kwargs):
+        self._n_parameters = len(parameters)
 
         self._parameters = <AVALUE*>malloc(
-            1 * sizeof(AVALUE)
+            self._n_parameters * sizeof(AVALUE)
             )
         if self._parameters == NULL:
             raise MemoryError()
-
-        self._parameters[0] = kwargs.get("dt", 0.001)
 
     def __dealloc__(self):
 
         if self._parameters != NULL:
             free(self._parameters)
+
+    def __init__(self):
+        self._dparam = 0
+
+        self._check_param_consistency()
+
+    @classmethod
+    def from_mapping(cls, parameters: Mapping[str, float]):
+        raise NotImplementedError
+
+    cdef void update(self, System system):
+        pass
+
+    def _check_param_consistency(self):
+        if self._n_parameters != self._dparam:
+           raise ValueError
+
+cdef class EulerIntegrator(Driver):
+
 
     def __repr__(self):
         return f"{self.__class__.__name__}(dt={self._parameters[0]})"
@@ -361,9 +406,6 @@ cdef class System:
 
         if forces is None:
             forces = []
-
-        if forces is None:
-            forces = []
         self.forces = forces
 
         if drivers is None:
@@ -382,6 +424,7 @@ cdef class System:
             self._boxinv = np.linalg.inv(self._box)
 
         self._step = 0
+
         self.rv = np.zeros(3, dtype=P_AVALUE)
         self.fv = np.zeros(3, dtype=P_AVALUE)
 

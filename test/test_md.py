@@ -108,14 +108,39 @@ class TestForce:
                 None, marks=pytest.mark.raises(exception=IndexError)
             ),
             pytest.param(
-                md.Force, [], [], 0,
-                None, marks=pytest.mark.raises(exception=NotImplementedError)
+                md.Force, [0], [], 0, {"p1": 0}
             )
         ]
     )
     def test_get_interaction(self, Force, indices, i, parameters, expected):
         force = Force(indices, parameters)
         assert expected == force.get_interaction(i)
+
+    @pytest.mark.parametrize(
+        "Force,indices,parameters",
+        [
+            (md.ForceHarmonicBond, [0, 1], [0.1, 0.1]),
+            (md.ForceHarmonicBond, [0, 1, 2, 3], [0.1, 0.1, 0.2, 0.1]),
+            (
+                md.ForceHarmonicBond,
+                [0, 1, 0, 2, 2, 3],
+                [0.1, 0.1, 0.2, 0.2, 0.2, 0.1]
+            )
+        ]
+    )
+    def test_add_contributions(
+            self, Force, indices, parameters, num_regression):
+        force = Force(indices, parameters)
+        system = md.System([[0, 0, 0],
+                            [1, 0, 0],
+                            [0, 1, 0],
+                            [0, 0, 1]])
+
+        force.add_contributions(system)
+
+        num_regression.check({
+            "forces": system.forcevectors.flatten()
+            })
 
 
 @pytest.mark.parametrize(
