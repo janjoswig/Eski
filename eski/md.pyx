@@ -69,7 +69,8 @@ cdef class Force:
         parameters: Iterable of force parameters.
     """
 
-    _param_names = ["p1"]
+    _index_names = ["p1"]
+    _param_names = []
 
     def __cinit__(
             self,
@@ -131,7 +132,16 @@ cdef class Force:
 
     @classmethod
     def from_mappings(cls, forces: Iterable[Mapping[str, Union[float, int]]]):
-        raise NotImplementedError
+        indices = []
+        parameters = []
+        for mapping in forces:
+            for name in cls._index_names:
+                indices.append(mapping[name])
+
+            for name in cls._param_names:
+                parameters.append(mapping[name])
+
+        return cls(indices, parameters)
 
     def _check_index_param_consistency(self):
         """Raise error if indices and parameters do not match"""
@@ -163,14 +173,25 @@ cdef class Force:
                 )
 
     def get_interaction(self, AINDEX index):
+        """Return info for interaction
+
+        Args:
+            index: Index of the interaction to get the info for
+
+        Returns:
+            Dictionary with keys according to
+            :obj:`self._index_names` and :obj:`self._param_names` and
+            corresponding values
+        """
+
         self._check_interaction_index(index)
 
-        info = dict(zip(
-            self._param_names,
-            [
-                self._indices[index * self._dindex],
-            ]
-        ))
+        info = {}
+        for i, name in enumerate(self._index_names):
+            info[name] = self._indices[index * self._dindex + i]
+
+        for i, name in enumerate(self._param_names):
+            info[name] = self._parameters[index * self._dparam + i]
 
         return info
 
@@ -196,7 +217,8 @@ cdef class Force:
 cdef class ForceHarmonicBond(Force):
     """Harmonic spring force approximating a chemical bond"""
 
-    _param_names = ["p1", "p2", "r0", "k"]
+    _index_names = ["p1", "p2"]
+    _param_names = ["r0", "k"]
 
     def __init__(self, *args, **kwargs):
         self.group = 0
@@ -206,31 +228,6 @@ cdef class ForceHarmonicBond(Force):
         self._dparam = 2
 
         self._check_index_param_consistency()
-
-    def get_interaction(self, AINDEX index):
-        """Return info for interaction
-
-        Returns:
-            Dictionary with keys:
-                p1: Index of atom 1,
-                p2: Index of atom 2,
-                r0: Equillibrium bond length (nm),
-                k: Force constanct (kJ / (mol nm**2))
-        """
-
-        self._check_interaction_index(index)
-
-        info = dict(zip(
-            self._param_names,
-            [
-                self._indices[index * self._dindex],
-                self._indices[index * self._dindex + 1],
-                self._parameters[index * self._dparam],
-                self._parameters[index * self._dparam + 1]
-            ]
-        ))
-
-        return info
 
     cpdef void add_contributions(self, System system):
         cdef AINDEX index

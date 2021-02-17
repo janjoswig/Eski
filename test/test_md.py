@@ -97,6 +97,24 @@ class TestForce:
         assert isinstance(force.n_interactions, int)
 
     @pytest.mark.parametrize(
+        "Force,forces",
+        [
+            (md.Force, [{"p1": 0}, {"p1": 1}]),
+            (md.ForceHarmonicBond, [{"p1": 0, "p2": 1, "r0": 0.1, "k": 0.2}]),
+            pytest.param(
+                md.ForceHarmonicBond,
+                [{"p1": 0, "p2": 1, "r0": 0.1}],
+                marks=pytest.mark.raises(exception=KeyError)
+                )
+        ]
+    )
+    def test_create_from_mappings(self, Force, forces):
+        force = Force.from_mappings(forces)
+        assert isinstance(str(force), str)
+        assert isinstance(force.id, int)
+        assert isinstance(force.n_interactions, int)
+
+    @pytest.mark.parametrize(
         "Force,indices,parameters,i,expected",
         [
             (
