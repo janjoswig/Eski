@@ -159,7 +159,7 @@ cdef class Force:
         raise NotImplementedError
 
     cpdef void add_contributions(self, System system):
-        raise NotImplementedError
+        NotImplemented
 
     cdef void _add_contribution(
             self,
@@ -168,7 +168,7 @@ cdef class Force:
             AVALUE *forcevectors,
             AVALUE *rv,
             AVALUE *fv) nogil:
-        raise NotImplementedError
+        NotImplemented
 
 
 cdef class ForceHarmonicBond(Force):
@@ -187,7 +187,7 @@ cdef class ForceHarmonicBond(Force):
         """Return info for interaction
 
         Returns:
-            Dictionary with keys
+            Dictionary with keys:
                 p1: Index of atom 1,
                 p2: Index of atom 2,
                 r0: Equillibrium bond length (nm),
@@ -195,7 +195,7 @@ cdef class ForceHarmonicBond(Force):
         """
 
         if (index < 0) or (index >= self.n_interactions):
-            raise ValueError(
+            raise IndexError(
                 "Interaction index out of range"
                 )
 
@@ -205,6 +205,7 @@ cdef class ForceHarmonicBond(Force):
             "r0": self._parameters[index * self._dparam],
             "k": self._parameters[index * self._dparam + 1]
             }
+
         return info
 
     cpdef void add_contributions(self, System system):
@@ -231,6 +232,9 @@ cdef class ForceHarmonicBond(Force):
         Args:
             index: Index of interaction
             structure: Pointer to atom positon array
+            forcevectors: Pointer to forces array
+            rv: Pointer to buffer array of length 3 for distance vector
+            fv: Pointer to buffer array of length 3 for force vector
 
         Returns:
             Force (kJ / (mol nm))
@@ -259,8 +263,6 @@ cdef class ForceHarmonicBond(Force):
             fv[i] = f * rv[i] / r
             fv1[i] += fv[i]
             fv2[i] -= fv[i]
-
-        return
 
 
 cdef class Driver:

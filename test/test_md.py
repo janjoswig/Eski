@@ -70,17 +70,21 @@ class TestForce:
     @pytest.mark.parametrize(
         "Force,indices,parameters",
         [
-            pytest.param(md.Force, [1, 2, 3], [], marks=[]),
+            (md.Force, [1, 2, 3], []),
             pytest.param(
                 md.Force, [1, 2, 3], [1.0],
                 marks=pytest.mark.raises(exception=ValueError)
                 ),
             pytest.param(
-                md.ForceHarmonicBond, (1, 2, 3), (0.1, 0.5),
+                md.ForceHarmonicBond, [1, 2, 3], [0.1, 0.5],
                 marks=pytest.mark.raises(exception=ValueError)
                 ),
             pytest.param(
-                md.ForceHarmonicBond, (1, 2), (0.1, 0.5, 0.4),
+                md.ForceHarmonicBond, [1, 2], [0.1, 0.5, 0.4],
+                marks=pytest.mark.raises(exception=ValueError)
+                ),
+            pytest.param(
+                md.ForceHarmonicBond, [1, 2], [0.1, 0.5, 0.4, 0.3],
                 marks=pytest.mark.raises(exception=ValueError)
                 ),
             (md.ForceHarmonicBond, [1, 2], [0.1, 0.5])
@@ -92,8 +96,26 @@ class TestForce:
         assert isinstance(force.id, int)
         assert isinstance(force.n_interactions, int)
 
-    def test_get_interaction(self):
-        force = md.ForceHarmonicBond((1, 2), (0.1, 0.5))
+    @pytest.mark.parametrize(
+        "Force,indices,parameters,i,expected",
+        [
+            (
+                md.ForceHarmonicBond, [1, 2], [0.1, 0.2], 0,
+                {"p1": 1, "p2": 2, "r0": 0.1, "k": 0.2}
+            ),
+            pytest.param(
+                md.ForceHarmonicBond, [1, 2], [0.1, 0.2], 1,
+                None, marks=pytest.mark.raises(exception=IndexError)
+            ),
+            pytest.param(
+                md.Force, [], [], 0,
+                None, marks=pytest.mark.raises(exception=NotImplementedError)
+            )
+        ]
+    )
+    def test_get_interaction(self, Force, indices, i, parameters, expected):
+        force = Force(indices, parameters)
+        assert expected == force.get_interaction(i)
 
 
 @pytest.mark.parametrize(
