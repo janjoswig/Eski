@@ -1,9 +1,7 @@
 cimport numpy as np
+
 from eski.md cimport System
-
-
-ctypedef np.intp_t AINDEX
-ctypedef np.float64_t AVALUE
+from eski.primitive_types cimport AINDEX, AVALUE
 
 
 cdef class Force:

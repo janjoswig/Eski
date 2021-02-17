@@ -10,10 +10,7 @@ from libc.stdlib cimport malloc, free
 
 from eski.md cimport System
 from eski.metrics cimport _euclidean_distance
-
-
-P_AVALUE = np.float64
-P_AINDEX = np.intp
+from eski.primitive_types import P_AINDEX, P_AVALUE
 
 
 cdef class Force:

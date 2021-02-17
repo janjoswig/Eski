@@ -8,8 +8,7 @@ cimport numpy as np
 from libc.math cimport sqrt as csqrt, pow as cpow
 from libc.stdlib cimport malloc, free
 
-P_AVALUE = np.float64
-P_AINDEX = np.intp
+from eski.primitive_types import P_AINDEX, P_AVALUE
 
 
 cdef class Atom:

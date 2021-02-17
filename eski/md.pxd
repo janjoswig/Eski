@@ -1,8 +1,7 @@
 cimport numpy as np
 
+from eski.primitive_types cimport AINDEX, AVALUE
 
-ctypedef np.intp_t AINDEX
-ctypedef np.float64_t AVALUE
 
 ctypedef struct internal_atom:
     AINDEX atype_id

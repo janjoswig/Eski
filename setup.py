@@ -32,5 +32,6 @@ setup(
     author="Jan-Oliver Joswig",
     author_email="jan.joswig@fu-berlin.de",
     packages=find_packages(),
+    package_data={'eski': ['*.pxd']},
     ext_modules=extensions,
 )

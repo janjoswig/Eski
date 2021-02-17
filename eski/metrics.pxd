@@ -1,8 +1,6 @@
 cimport numpy as np
 
-
-ctypedef np.intp_t AINDEX
-ctypedef np.float64_t AVALUE
+from eski.primitive_types cimport AINDEX, AVALUE
 
 
 cdef AVALUE _euclidean_distance(
