@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from eski import md
+from eski import md, atoms
 
 
 class TestSystem:
@@ -14,7 +14,7 @@ class TestSystem:
             self, registered_system_key, registered_system, file_regression):
         if registered_system.atoms is not None:
             registered_system.atoms = [
-                md.Atom(*args, **kwargs)
+                atoms.Atom(*args, **kwargs)
                 for args, kwargs in registered_system.atoms
                 ]
 
@@ -37,29 +37,5 @@ class TestSystem:
         with pytest.raises(AssertionError):
             md.System(
                 structure=np.zeros((1, 3), dtype=np.float),
-                atoms=[md.Atom() for _ in range(10)]
+                atoms=[atoms.Atom() for _ in range(10)]
             )
-
-
-class TestAtom:
-
-    @pytest.mark.parametrize(
-        "args,kwargs,expected",
-        [
-            (("C"), {}, ("C", "C", "C", "UNK", 0., 0.)),
-            (("Ar", "AX"), {"mass": 40}, ("Ar", "AX", "Ar", "UNK", 40., 0.))
-            ]
-        )
-    def test_create(self, args, kwargs, expected):
-        a = md.Atom(*args, **kwargs)
-        check = dict(
-            zip(
-                ["aname", "atype", "element", "residue", "mass", "charge"],
-                expected
-               )
-            )
-        for attr, value in check.items():
-            assert getattr(a, attr) == value
-
-        attr_strs = [f"{k}={v}" for k, v in check.items()]
-        assert repr(a) == f"{a.__class__.__name__}({', '.join(attr_strs)})"

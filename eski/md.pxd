@@ -1,26 +1,7 @@
 cimport numpy as np
 
 from eski.primitive_types cimport AINDEX, AVALUE
-
-
-ctypedef struct internal_atom:
-    AINDEX atype_id
-    AVALUE mass
-    AVALUE charge
-
-
-cdef class Atom:
-
-    cdef public:
-        AINDEX aid
-        AINDEX resid
-        str aname
-        str atype
-        str element
-        str residue
-        str chain
-        AVALUE mass
-        AVALUE charge
+from eski.atoms cimport internal_atom
 
 
 cdef class System:
@@ -36,7 +17,6 @@ cdef class System:
         AINDEX _n_atoms
         internal_atom *_atoms
         AVALUE[:, ::1] _box, _boxinv
-        dict atype_id_mapping
         Py_ssize_t _step
 
     cdef void allocate_atoms(self)

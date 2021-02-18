@@ -7,51 +7,9 @@ cimport numpy as np
 from libc.stdlib cimport malloc, free
 
 from eski.primitive_types import P_AINDEX, P_AVALUE
-from  eski.forces cimport Force
-from  eski.drivers cimport Driver
-
-
-cdef class Atom:
-    """Bundels topologic information"""
-
-    def __cinit__(
-            self,
-            aname=None,
-            atype=None,
-            aid=None,
-            element=None,
-            residue="UNK",
-            resid=None,
-            mass=0,
-            charge=0):
-
-        if aname is None:
-            aname = ""
-        self.aname = aname
-
-        if atype is None:
-            atype = aname
-        self.atype = atype
-
-        if element is None:
-            element = aname
-        self.element = element
-
-        self.residue = residue
-
-        self.mass = mass
-        self.charge = charge
-
-    def __repr__(self):
-        attributes = (
-            f"(aname={self.aname}, "
-            f"atype={self.atype}, "
-            f"element={self.element}, "
-            f"residue={self.residue}, "
-            f"mass={self.mass}, "
-            f"charge={self.charge})"
-            )
-        return f"{self.__class__.__name__}{attributes}"
+from eski.forces cimport Force
+from eski.drivers cimport Driver
+from eski.atoms cimport Atom, internal_atom, make_internal_atoms
 
 
 cdef class System:
@@ -98,7 +56,8 @@ cdef class System:
             )
 
         if atoms is not None:
-            self.make_atoms(atoms)
+            assert len(atoms) == self._n_atoms
+            make_internal_atoms(atoms, self._atoms)
 
         if forces is None:
             forces = []
@@ -166,34 +125,6 @@ cdef class System:
         if self._atoms == NULL:
             raise MemoryError()
 
-    def make_atoms(self, atoms: Iterable) -> None:
-        """Creates internal array of atoms
-
-        Maps the atom type of atoms to an internal id, keeps mass and
-        charge, and discards the rest.
-
-        Args:
-            atoms: An iterable of :obj:`Atom` instances
-                or equivalent types that provide `atype`, `mass`, and
-                `charge` attributes.
-        """
-
-        assert self.n_atoms == len(atoms)
-
-        cdef AINDEX index, atype_id = 0
-        self.atype_id_mapping = {}
-
-        for index, atom in enumerate(atoms):
-            if atom.atype not in self.atype_id_mapping:
-                self.atype_id_mapping[atom.atype] = atype_id
-                atype_id += 1
-
-            self._atoms[index] = internal_atom(
-                atype_id=self.atype_id_mapping[atom.atype],
-                mass=atom.mass,
-                charge=atom.charge
-                )
-
     cdef inline void reset_forcevectors(self) nogil:
         """Reinitialise force vector matrix"""
 
@@ -222,7 +153,13 @@ cdef class System:
                     )
 
             for driver in self.drivers:
-                driver.update(self)
+                driver._update(
+                    &self._structure[0, 0],
+                    &self._velocities[0, 0],
+                    &self._forcevectors[0, 0],
+                    self._atoms,
+                    self._n_atoms
+                    )
 
             # self.apply_pbc
 

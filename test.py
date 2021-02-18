@@ -6,6 +6,7 @@ Requires pytest, pytest-cov and anybadge
 from html.parser import HTMLParser
 import shlex
 import subprocess
+import sys
 
 
 class TotalCoverageParser(HTMLParser):
@@ -36,7 +37,7 @@ class TotalCoverageParser(HTMLParser):
 if __name__ == "__main__":
 
     test_command_list = [
-        "coverage run -m pytest",
+        f"coverage run -m pytest {' '.join(sys.argv[1:])}",
         "coverage html"
         ]
 
