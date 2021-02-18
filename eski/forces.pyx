@@ -6,7 +6,6 @@ cimport numpy as np
 
 from libc.stdlib cimport malloc, free
 
-from eski.md cimport System
 from eski.metrics cimport _euclidean_distance
 from eski.primitive_types import P_AINDEX, P_AVALUE
 
@@ -55,6 +54,9 @@ cdef class Force:
 
         for i, param in enumerate(parameters):
             self._parameters[i] = param
+
+        self.rv = np.zeros(3, dtype=P_AVALUE)
+        self.fv = np.zeros(3, dtype=P_AVALUE)
 
     def __dealloc__(self):
         if self._indices != NULL:
@@ -160,16 +162,23 @@ cdef class Force:
                 "Interaction index out of range"
                 )
 
-    cpdef void add_contributions(self, System system):
+    cpdef void add_contributions(
+            self,
+            AVALUE[:, ::1] structure,
+            AVALUE[:, ::1] forcevectors):
+        NotImplemented
+
+    cdef void _add_contributions(
+            self,
+            AVALUE *structure,
+            AVALUE *forcevectors) nogil:
         NotImplemented
 
     cdef void _add_contribution(
             self,
             AINDEX index,
             AVALUE *structure,
-            AVALUE *forcevectors,
-            AVALUE *rv,
-            AVALUE *fv) nogil:
+            AVALUE *forcevectors) nogil:
         NotImplemented
 
 
@@ -188,33 +197,41 @@ cdef class ForceHarmonicBond(Force):
 
         self._check_index_param_consistency()
 
-    cpdef void add_contributions(self, System system):
+    cpdef void add_contributions(
+            self,
+            AVALUE[:, ::1] structure,
+            AVALUE[:, ::1] forcevectors):
+
+        self._add_contributions(
+                &structure[0, 0],
+                &forcevectors[0, 0],
+                )
+
+    cdef void _add_contributions(
+            self,
+            AVALUE *structure,
+            AVALUE *forcevectors) nogil:
+
         cdef AINDEX index
 
         for index in range(self._n_indices / self._dindex):
             self._add_contribution(
                 index,
-                &system._structure[0, 0],
-                &system._forcevectors[0, 0],
-                &system.rv[0],
-                &system.fv[0]
+                structure,
+                forcevectors,
                 )
 
     cdef void _add_contribution(
             self,
             AINDEX index,
             AVALUE *structure,
-            AVALUE *forcevectors,
-            AVALUE *rv,
-            AVALUE *fv) nogil:
+            AVALUE *forcevectors) nogil:
         """Evaluate harmonic bond force
 
         Args:
             index: Index of interaction
-            structure: Pointer to atom positon array
+            structure: Pointer to atom position array
             forcevectors: Pointer to forces array
-            rv: Pointer to buffer array of length 3 for distance vector
-            fv: Pointer to buffer array of length 3 for force vector
 
         Returns:
             Force (kJ / (mol nm))
@@ -230,7 +247,7 @@ cdef class ForceHarmonicBond(Force):
         cdef AVALUE *fv2
 
         r = _euclidean_distance(
-            rv,
+            &self.rv[0],
             &structure[p1 * 3],
             &structure[p2 * 3]
             )
@@ -240,6 +257,6 @@ cdef class ForceHarmonicBond(Force):
 
         f = -k * (r - r0)
         for i in range(3):
-            fv[i] = f * rv[i] / r
-            fv1[i] += fv[i]
-            fv2[i] -= fv[i]
+            self.fv[i] = f * self.rv[i] / r
+            fv1[i] += self.fv[i]
+            fv2[i] -= self.fv[i]

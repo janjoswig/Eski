@@ -27,6 +27,8 @@ cdef class System:
 
     cdef public:
         str desc
+        list forces
+        list drivers
     cdef:
         AVALUE[:, ::1] _structure
         AVALUE[:, ::1] _velocities
@@ -35,11 +37,8 @@ cdef class System:
         internal_atom *_atoms
         AVALUE[:, ::1] _box, _boxinv
         dict atype_id_mapping
-        list forces
-        list drivers
         Py_ssize_t _step
-        AVALUE[::1] rv
-        AVALUE[::1] fv
 
     cdef void allocate_atoms(self)
     cdef void reset_forcevectors(self) nogil
+    cpdef void step(self, Py_ssize_t n)

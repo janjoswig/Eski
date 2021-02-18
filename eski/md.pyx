@@ -7,6 +7,8 @@ cimport numpy as np
 from libc.stdlib cimport malloc, free
 
 from eski.primitive_types import P_AINDEX, P_AVALUE
+from  eski.forces cimport Force
+from  eski.drivers cimport Driver
 
 
 cdef class Atom:
@@ -119,9 +121,6 @@ cdef class System:
 
         self._step = 0
 
-        self.rv = np.zeros(3, dtype=P_AVALUE)
-        self.fv = np.zeros(3, dtype=P_AVALUE)
-
     def __dealloc__(self):
         if self._atoms != NULL:
             free(self._atoms)
@@ -204,8 +203,11 @@ cdef class System:
             for j in range(3):
                 self._forcevectors[i, j] = 0
 
-    def step(self, Py_ssize_t n):
+    cpdef void step(self, Py_ssize_t n):
         """Perform a number of MD simulation steps"""
+
+        cdef Force force
+        cdef Driver driver
 
         self._step = 0
 
@@ -214,7 +216,10 @@ cdef class System:
             self.reset_forcevectors()
 
             for force in self.forces:
-                force.add_contributions(self)
+                force._add_contributions(
+                    &self._structure[0, 0],
+                    &self._forcevectors[0, 0],
+                    )
 
             for driver in self.drivers:
                 driver.update(self)
