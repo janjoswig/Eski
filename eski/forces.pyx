@@ -1,11 +1,9 @@
-from numbers import Integral
 from typing import Iterable, Mapping
 from typing import Union
 
 import numpy as np
 cimport numpy as np
 
-from libc.math cimport sqrt as csqrt, pow as cpow
 from libc.stdlib cimport malloc, free
 
 from eski.md cimport System
