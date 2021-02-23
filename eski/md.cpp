@@ -1466,6 +1466,8 @@ struct __pyx_vtabstruct_4eski_6forces_Force {
   void (*add_contributions)(struct __pyx_obj_4eski_6forces_Force *, __Pyx_memviewslice, __Pyx_memviewslice, int __pyx_skip_dispatch);
   void (*_add_contributions)(struct __pyx_obj_4eski_6forces_Force *, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_15primitive_types_AVALUE *);
   void (*_add_contribution)(struct __pyx_obj_4eski_6forces_Force *, __pyx_t_4eski_15primitive_types_AINDEX, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_15primitive_types_AVALUE *);
+  void (*_check_index_param_consistency)(struct __pyx_obj_4eski_6forces_Force *, int __pyx_skip_dispatch);
+  void (*_check_interaction_index)(struct __pyx_obj_4eski_6forces_Force *, __pyx_t_4eski_15primitive_types_AINDEX, int __pyx_skip_dispatch);
 };
 static struct __pyx_vtabstruct_4eski_6forces_Force *__pyx_vtabptr_4eski_6forces_Force;
 

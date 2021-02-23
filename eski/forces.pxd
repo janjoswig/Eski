@@ -27,3 +27,6 @@ cdef class Force:
             AINDEX index,
             AVALUE *structure,
             AVALUE *forcevectors) nogil
+
+    cpdef void _check_index_param_consistency(self) except *
+    cpdef void _check_interaction_index(self, AINDEX index) except *

@@ -1,6 +1,8 @@
 from typing import Iterable, Mapping
 from typing import Union
 
+cimport cython
+
 import numpy as np
 cimport numpy as np
 
@@ -69,8 +71,8 @@ cdef class Force:
         self.group = 0
 
         self._id = 0
-        self._dindex = 1
-        self._dparam = 0
+        self._dindex = len(self._index_names)
+        self._dparam = len(self._param_names)
 
         self._check_index_param_consistency()
 
@@ -104,10 +106,10 @@ cdef class Force:
 
         return cls(indices, parameters)
 
-    def _check_index_param_consistency(self):
+    cpdef void _check_index_param_consistency(self) except *:
         """Raise error if indices and parameters do not match"""
 
-        if (self._n_indices % self._dindex) > 0:
+        if cython.cmod(self._n_indices, self._dindex) > 0:
             raise ValueError(
                 f"Wrong number of 'indices'; must be multiple of {self._dindex}"
                 )
@@ -116,10 +118,10 @@ cdef class Force:
             if self._n_parameters == 0:
                 return
             raise ValueError(
-                "Force takes no parameters"
+                f"Force {type(self).__name__!r} takes no parameters"
                 )
 
-        if (self._n_parameters % self._dparam) > 0:
+        if cython.cmod(self._n_parameters, self._dparam) > 0:
             raise ValueError(
                 f"Wrong number of 'parameters'; must be multiple of {self._dparam}"
                 )
@@ -147,7 +149,10 @@ cdef class Force:
 
         self._check_interaction_index(index)
 
-        info = {}
+        cdef dict info = {}
+        cdef AINDEX i
+        cdef str name
+
         for i, name in enumerate(self._index_names):
             info[name] = self._indices[index * self._dindex + i]
 
@@ -156,46 +161,11 @@ cdef class Force:
 
         return info
 
-    def _check_interaction_index(self, AINDEX index):
+    cpdef void _check_interaction_index(self, AINDEX index) except *:
         if (index < 0) or (index >= self.n_interactions):
             raise IndexError(
                 "Interaction index out of range"
                 )
-
-    cpdef void add_contributions(
-            self,
-            AVALUE[:, ::1] structure,
-            AVALUE[:, ::1] forcevectors):
-        NotImplemented
-
-    cdef void _add_contributions(
-            self,
-            AVALUE *structure,
-            AVALUE *forcevectors) nogil:
-        NotImplemented
-
-    cdef void _add_contribution(
-            self,
-            AINDEX index,
-            AVALUE *structure,
-            AVALUE *forcevectors) nogil:
-        NotImplemented
-
-
-cdef class ForceHarmonicBond(Force):
-    """Harmonic spring force approximating a chemical bond"""
-
-    _index_names = ["p1", "p2"]
-    _param_names = ["r0", "k"]
-
-    def __init__(self, *args, **kwargs):
-        self.group = 0
-
-        self._id = 1
-        self._dindex = 2
-        self._dparam = 2
-
-        self._check_index_param_consistency()
 
     cpdef void add_contributions(
             self,
@@ -220,6 +190,29 @@ cdef class ForceHarmonicBond(Force):
                 structure,
                 forcevectors,
                 )
+
+    cdef void _add_contribution(
+            self,
+            AINDEX index,
+            AVALUE *structure,
+            AVALUE *forcevectors) nogil:
+        NotImplemented
+
+
+cdef class ForceHarmonicBond(Force):
+    """Harmonic spring force approximating a chemical bond"""
+
+    _index_names = ["p1", "p2"]
+    _param_names = ["r0", "k"]
+
+    def __init__(self, *args, **kwargs):
+        self.group = 0
+
+        self._id = 1
+        self._dindex = len(self._index_names)
+        self._dparam = len(self._param_names)
+
+        self._check_index_param_consistency()
 
     cdef void _add_contribution(
             self,
@@ -260,3 +253,68 @@ cdef class ForceHarmonicBond(Force):
             self.fv[i] = f * self.rv[i] / r
             fv1[i] += self.fv[i]
             fv2[i] -= self.fv[i]
+
+
+cdef class ForceLJ(Force):
+    """Harmonic spring force approximating a chemical bond"""
+
+    _index_names = ["p1", "p2"]
+    _param_names = ["sigma", "epsilon"]
+
+    def __init__(self, *args, **kwargs):
+        self.group = 0
+
+        self._id = 2
+        self._dindex = len(self._index_names)
+        self._dparam = len(self._param_names)
+
+        self._check_index_param_consistency()
+
+    cdef void _add_contribution(
+            self,
+            AINDEX index,
+            AVALUE *structure,
+            AVALUE *forcevectors) nogil:
+        """Evaluate Lennard-Jones force
+
+        Args:
+            index: Index of interaction
+            structure: Pointer to atom position array
+            forcevectors: Pointer to forces array
+
+        Returns:
+            Force (kJ / (mol nm))
+        """
+
+        cdef AINDEX i
+        cdef AVALUE r, f
+        cdef AINDEX p1 = self._indices[index * self._dindex]
+        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
+        cdef AVALUE epsilon = self._parameters[index * self._dparam]
+        cdef AVALUE sigma = self._parameters[index * self._dparam + 1]
+        cdef AVALUE *fv1
+        cdef AVALUE *fv2
+
+        r = _euclidean_distance(
+            &self.rv[0],
+            &structure[p1 * 3],
+            &structure[p2 * 3]
+            )
+
+        fv1 = &forcevectors[p1 * 3]
+        fv2 = &forcevectors[p2 * 3]
+
+        f = 24 * e * (2 * cpow(s, 12) / cpow(r, 13) - cpow(s, 6) / cpow(r, 7))
+        for i in range(3):
+            self.fv[i] = f * self.rv[i] / r
+            fv1[i] += self.fv[i]
+            fv2[i] -= self.fv[i]
+
+    @staticmethod
+    def lorentz_berthelot_combination(
+            AVALUE s1, AVALUE e1, AVALUE s2, AVALUE e2):
+
+        s = (s1 + s2) / 2
+        e = csqrt(e1 * e2)
+
+        return s, e
