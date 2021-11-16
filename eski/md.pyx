@@ -1,15 +1,9 @@
-from typing import Iterable, Mapping
-from typing import Union
-
 import numpy as np
 cimport numpy as np
 
 from libc.stdlib cimport malloc, free
 
-from eski.primitive_types import P_AINDEX, P_AVALUE
-from eski.forces cimport Force
-from eski.drivers cimport Driver
-from eski.atoms cimport Atom, internal_atom, make_internal_atoms
+from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
 
 
 cdef class System:
@@ -17,30 +11,40 @@ cdef class System:
 
     def __cinit__(
             self,
-            structure,
+            configuration,
+            dim_per_atom,
             velocities=None,
             atoms=None,
-            forces=None,
+            interactions=None,
             drivers=None,
-            box=None,
+            bounds=None,
             desc=None):
 
         if desc is None:
             desc = ""
         self.desc = desc
 
-        self._structure = np.array(
-            structure,
+        self._configuration = np.array(
+            configuration,
             copy=True,
             dtype=P_AVALUE,
             order="c"
             )
 
-        self._n_atoms = self._structure.shape[0]
+        n_dim = self._configuration.shape[0]
+        dim_per_atom = dim_per_atom
+        n_atoms = n_dim // dim_per_atom
+        assert n_dim  == n_atoms * dim_per_atom
+
+        self._support = system_support(n_atoms, n_dim, dim_per_atom)
         self.allocate_atoms()
 
+        if atoms is not None:
+            assert len(atoms) == self._n_atoms
+            make_internal_atoms(atoms, self._atoms)
+
         if velocities is None:
-            velocities = np.zeros_like(structure)
+            velocities = np.zeros_like(configuration)
 
         self._velocities = np.array(
             velocities,
@@ -49,34 +53,26 @@ cdef class System:
             order="c"
             )
 
-        self._forcevectors = np.zeros_like(
-            structure,
+        self._forces = np.zeros_like(
+            configuration,
             dtype=P_AVALUE,
             order="c"
             )
 
-        if atoms is not None:
-            assert len(atoms) == self._n_atoms
-            make_internal_atoms(atoms, self._atoms)
-
-        if forces is None:
-            forces = []
-        self.forces = forces
+        if interactions is None:
+            interactions = []
+        self.interactions = interactions
 
         if drivers is None:
             drivers = []
         self.drivers = drivers
 
-        if box is None:
-            # TODO: Check for invalid box
-            self._box = np.zeros((3, 3), dtype=P_AVALUE)
-            self._boxinv = np.array(self._box, copy=True, dtype=P_AVALUE)
-
+        if bounds is None:
+            self._bounds = np.zeros(self._dim_per_atom)
+            self._use_pbc = False
         else:
-            self._box = np.array(
-                box, copy=True, dtype=P_AVALUE
-                )
-            self._boxinv = np.linalg.inv(self._box)
+            self._bounds = bounds
+            self._use_pbc = True
 
         self._step = 0
 
@@ -85,24 +81,28 @@ cdef class System:
             free(self._atoms)
 
     @property
-    def structure(self):
-        return np.asarray(self._structure)
+    def configuration(self):
+        return np.asarray(self._configuration)
 
     @property
     def velocities(self):
         return np.asarray(self._velocities)
 
     @property
-    def forcevectors(self):
-        return np.asarray(self._forcevectors)
+    def forces(self):
+        return np.asarray(self._forces)
 
     @property
     def n_atoms(self):
-        return self._n_atoms
+        return self._support.n_atoms
 
     @property
-    def box(self):
-        return np.asarray(self._box)
+    def dim_per_atom(self):
+        return self._support.dim_per_atom
+
+    @property
+    def bounds(self):
+        return np.asarray(self._bounds)
 
     def __repr__(self):
         if self.desc == "":
@@ -113,52 +113,64 @@ cdef class System:
         if self._n_atoms == 1:
             atoms_str = "1 atom"
         else:
-            atoms_str = f"{self._n_atoms} atoms"
+            atoms_str = f"{self.n_atoms} atoms"
+
+        dim_str = f" ({self.dim_per_atom}D)"
 
         return f"{self.__class__.__name__}({desc_str}{atoms_str})"
 
     cdef void allocate_atoms(self):
         self._atoms = <internal_atom*>malloc(
-            self._n_atoms * sizeof(internal_atom)
+            self._support.n_atoms * sizeof(internal_atom)
             )
 
         if self._atoms == NULL:
             raise MemoryError()
 
-    cdef inline void reset_forcevectors(self) nogil:
-        """Reinitialise force vector matrix"""
+    cdef inline void reset_forces(self) nogil:
+        """Reinitialise force vector"""
 
-        cdef AINDEX i, j
+        cdef AINDEX i
 
-        for i in range(self._n_atoms):
-            for j in range(3):
-                self._forcevectors[i, j] = 0
+        for i in range(self._n_dim):
+            self._forces[i] = 0
 
     cpdef void step(self, Py_ssize_t n):
         """Perform a number of MD simulation steps"""
 
-        cdef Force force
+        cdef Interaction interaction
         cdef Driver driver
+
+        cdef AVALUE *rv = <AVALUE*>malloc(
+            self._support.dim_per_atom * sizeof(AVALUE)
+            )
+
+        if rv == NULL:
+            raise MemoryError()
+
+        cdef resources res = resources(rv)
 
         self._step = 0
 
         for self._step in range(1, n + 1):
 
-            self.reset_forcevectors()
+            self.reset_forces()
 
-            for force in self.forces:
-                force._add_contributions(
-                    &self._structure[0, 0],
-                    &self._forcevectors[0, 0],
+            for interaction in self.interactions:
+                interaction._add_all_forces(
+                    &self._configuration[0],
+                    &self._forces[0],
+                    &self._support
+                    &res
                     )
 
             for driver in self.drivers:
                 driver._update(
-                    &self._structure[0, 0],
-                    &self._velocities[0, 0],
-                    &self._forcevectors[0, 0],
-                    self._atoms,
-                    self._n_atoms
+                    &self._configuration[0],
+                    &self._velocities[0],
+                    &self._forces[0],
+                    &self._atoms[0],
+                    &self._support
                     )
 
             # self.apply_pbc
@@ -166,3 +178,6 @@ cdef class System:
             # for reporter in self.reporters:
             #     if self._step % reporter.interval == 0:
             #         reporter.report(self)
+
+        if rv != NULL:
+            free(rv)

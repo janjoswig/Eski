@@ -7,6 +7,12 @@ ctypedef struct internal_atom:
     AVALUE charge
 
 
+ctypedef struct system_support:
+    AINDEX n_atoms
+    AVALUE n_dim
+    AVALUE dim_per_atom
+
+
 cdef class Atom:
 
     cdef public:

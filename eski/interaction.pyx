@@ -12,12 +12,12 @@ from eski.metrics cimport _euclidean_distance
 from eski.primitive_types import P_AINDEX, P_AVALUE
 
 
-cdef class Force:
-    """Base class for force to evaluate
+cdef class Interaction:
+    """Base class for interaction to evaluate
 
     If Cython supported abstract classes and/or virtual methods, this
-    would be an abstract base class for the force interface.  This
-    class is not meant to be initialised.
+    would be an abstract base class for the interaction interface.
+    This class is not meant to be initialised.
 
     Args:
         indices: Iterable of particle indices for which this force
@@ -57,9 +57,6 @@ cdef class Force:
         for i, param in enumerate(parameters):
             self._parameters[i] = param
 
-        self.rv = np.zeros(3, dtype=P_AVALUE)
-        self.fv = np.zeros(3, dtype=P_AVALUE)
-
     def __dealloc__(self):
         if self._indices != NULL:
             free(self._indices)
@@ -94,10 +91,10 @@ cdef class Force:
         return self._n_indices / self._dindex
 
     @classmethod
-    def from_mappings(cls, forces: Iterable[Mapping[str, Union[float, int]]]):
+    def from_mappings(cls, interactions: Iterable[Mapping[str, Union[float, int]]]):
         indices = []
         parameters = []
-        for mapping in forces:
+        for mapping in interactions:
             for name in cls._index_names:
                 indices.append(mapping[name])
 
@@ -167,39 +164,74 @@ cdef class Force:
                 "Interaction index out of range"
                 )
 
-    cpdef void add_contributions(
+    cpdef void add_all_forces(
             self,
-            AVALUE[:, ::1] structure,
-            AVALUE[:, ::1] forcevectors):
+            AVALUE[::1] configuration,
+            AVALUE[::1] forces,
+            system_support support,
+            resources res):
 
-        self._add_contributions(
-                &structure[0, 0],
-                &forcevectors[0, 0],
+        self._add_all_forces(
+                &configuration[0],
+                &forces[0],
+                support, res
                 )
 
-    cdef void _add_contributions(
+    cdef void _add_all_forces(
             self,
-            AVALUE *structure,
-            AVALUE *forcevectors) nogil:
+            AVALUE *configuration,
+            AVALUE *forces,
+            system_support support,
+            resources res) nogil:
 
         cdef AINDEX index
 
         for index in range(self._n_indices / self._dindex):
-            self._add_contribution(
+            self._add_force_by_index(
                 index,
-                structure,
-                forcevectors,
+                configuration,
+                forces,
+                support, res
                 )
 
-    cdef void _add_contribution(
+    cdef void _add_force_by_index(
             self,
             AINDEX index,
-            AVALUE *structure,
-            AVALUE *forcevectors) nogil:
-        NotImplemented
+            AVALUE *configuration,
+            AVALUE *forces,
+            system_support support,
+            resources res) nogil: ...
+
+    cpdef AVALUE get_total_energy(
+        self,  AVALUE[::1] configuration, system_support support):
+
+        return self._get_total_energy(
+            &configuration[0], support
+            )
+
+    cdef AVALUE _get_total_energy(
+        self,  AVALUE *configuration, system_support support) nogil
+
+        cdef AINDEX index
+        cdef AVALUE energy
+
+        for index in range(self._n_indices / self._dindex):
+            energy = energy + self._get_energy_by_index(
+                index,
+                configuration,
+                support
+                )
+
+        return energy
+
+    cdef AVALUE _get_energy_by_index(
+            self,
+            AINDEX index,
+            AVALUE *configuration,
+            system_support support) nogil: ...
 
 
-cdef class ForceHarmonicBond(Force):
+cdef class HarmonicBond(Interaction):
     """Harmonic spring force approximating a chemical bond"""
 
     _index_names = ["p1", "p2"]
@@ -214,24 +246,24 @@ cdef class ForceHarmonicBond(Force):
 
         self._check_index_param_consistency()
 
-    cdef void _add_contribution(
+    cdef void _add_force_by_index(
             self,
             AINDEX index,
-            AVALUE *structure,
-            AVALUE *forcevectors) nogil:
+            AVALUE *configuration,
+            AVALUE *forces,
+            system_support support,
+            resources res) nogil:
         """Evaluate harmonic bond force
 
         Args:
             index: Index of interaction
-            structure: Pointer to atom position array
-            forcevectors: Pointer to forces array
-
-        Returns:
-            Force (kJ / (mol nm))
+            configuration: Pointer to atom position array
+            forces: Pointer to forces array.
+                Force in (kJ / (mol nm))
         """
 
         cdef AINDEX i
-        cdef AVALUE r, f
+        cdef AVALUE r, f, _f
         cdef AINDEX p1 = self._indices[index * self._dindex]
         cdef AINDEX p2 = self._indices[index * self._dindex + 1]
         cdef AVALUE r0 = self._parameters[index * self._dparam]
@@ -240,19 +272,19 @@ cdef class ForceHarmonicBond(Force):
         cdef AVALUE *fv2
 
         r = _euclidean_distance(
-            &self.rv[0],
-            &structure[p1 * 3],
-            &structure[p2 * 3]
+            res.rv[0],
+            &configuration[p1 * support.dim_per_atom],
+            &configuration[p2 * support.dim_per_atom]
             )
 
-        fv1 = &forcevectors[p1 * 3]
-        fv2 = &forcevectors[p2 * 3]
+        fv1 = &forces[p1 * support.dim_per_atom]
+        fv2 = &forces[p2 * support.dim_per_atom]
 
         f = -k * (r - r0)
         for i in range(3):
-            self.fv[i] = f * self.rv[i] / r
-            fv1[i] += self.fv[i]
-            fv2[i] -= self.fv[i]
+            _f = f * res.rv[i] / r
+            fv1[i] += _f
+            fv2[i] -= _f
 
 
 cdef class ForceLJ(Force):
@@ -273,42 +305,42 @@ cdef class ForceLJ(Force):
     cdef void _add_contribution(
             self,
             AINDEX index,
-            AVALUE *structure,
-            AVALUE *forcevectors) nogil:
+            AVALUE *configuration,
+            AVALUE *forces,
+            system_support support,
+            resources res) nogil:
         """Evaluate Lennard-Jones force
 
         Args:
             index: Index of interaction
-            structure: Pointer to atom position array
-            forcevectors: Pointer to forces array
-
-        Returns:
-            Force (kJ / (mol nm))
+            configuration: Pointer to atom position array
+            forces: Pointer to forces array.
+                Force in (kJ / (mol nm)).
         """
 
         cdef AINDEX i
-        cdef AVALUE r, f
+        cdef AVALUE r, f, _f
         cdef AINDEX p1 = self._indices[index * self._dindex]
         cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AVALUE epsilon = self._parameters[index * self._dparam]
-        cdef AVALUE sigma = self._parameters[index * self._dparam + 1]
+        cdef AVALUE e = self._parameters[index * self._dparam]
+        cdef AVALUE s = self._parameters[index * self._dparam + 1]
         cdef AVALUE *fv1
         cdef AVALUE *fv2
 
         r = _euclidean_distance(
-            &self.rv[0],
-            &structure[p1 * 3],
-            &structure[p2 * 3]
+            &res.rv[0],
+            &configuration[p1 * 3],
+            &configuration[p2 * 3]
             )
 
-        fv1 = &forcevectors[p1 * 3]
-        fv2 = &forcevectors[p2 * 3]
+        fv1 = &forces[p1 * 3]
+        fv2 = &forces[p2 * 3]
 
         f = 24 * e * (2 * cpow(s, 12) / cpow(r, 13) - cpow(s, 6) / cpow(r, 7))
         for i in range(3):
-            self.fv[i] = f * self.rv[i] / r
-            fv1[i] += self.fv[i]
-            fv2[i] -= self.fv[i]
+            _f = f * self.rv[i] / r
+            fv1[i] += _f
+            fv2[i] -= _f
 
     @staticmethod
     def lorentz_berthelot_combination(
