@@ -9,8 +9,8 @@ ctypedef struct internal_atom:
 
 ctypedef struct system_support:
     AINDEX n_atoms
-    AVALUE n_dim
-    AVALUE dim_per_atom
+    AINDEX n_dim
+    AINDEX dim_per_atom
 
 
 cdef class Atom:

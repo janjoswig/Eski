@@ -3,26 +3,32 @@ from typing import Optional, Iterable
 
 import numpy as np
 
+from eski.atoms import Atom
+
 
 @dataclass
 class Model:
-    structure: np.ndarray
+    configuration: np.ndarray
     velocities: Optional[np.ndarray]
     desc: Optional[str]
     atoms: Optional[Iterable]
 
+    def make_Atoms(self):
+        if self.atoms is None:
+            return []
+
+        return [Atom(*args, **kwargs) for args, kwargs in self.atoms]
+
 
 dummy = Model(
-    structure=np.array([], ndmin=2),
+    configuration=np.array([]),
     velocities=None,
     desc=None,
     atoms=None
 )
 
 argon = Model(
-    structure=np.array(
-                [[0, 0, 0]]
-                ),
+    configuration=np.array([0, 0]),
     velocities=None,
     desc="One lonely argon atom",
     atoms=[(("Ar", ), {"mass": 40})]

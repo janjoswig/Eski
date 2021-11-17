@@ -1,5 +1,5 @@
 from typing import Iterable, Mapping
-from typing import Union
+from typing import Optional, Union
 
 cimport cython
 
@@ -7,9 +7,29 @@ import numpy as np
 cimport numpy as np
 
 from libc.stdlib cimport malloc, free
+from libc.math cimport sqrt as csqrt, pow as cpow
 
 from eski.metrics cimport _euclidean_distance
-from eski.primitive_types import P_AINDEX, P_AVALUE
+from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
+
+
+cdef resources allocate_resources(system_support support):
+    cdef Py_ssize_t i
+    cdef AVALUE *rv
+
+    rv = <AVALUE*>malloc(
+            support.dim_per_atom * sizeof(AVALUE)
+            )
+
+    if rv == NULL:
+        raise MemoryError()
+
+    for i in range(support.dim_per_atom):
+        rv[i] = 0
+
+    cdef resources res = resources(rv)
+
+    return res
 
 
 cdef class Interaction:
@@ -23,15 +43,27 @@ cdef class Interaction:
         indices: Iterable of particle indices for which this force
             should be evaluated.
         parameters: Iterable of force parameters.
+        group: Force group. Useful to distinguish between forces
+            that should be evaluated at different times steps.
+        id: Unique ID of this force type.
+        index_names: List of index identifiers.
+        param_names: List of parameter identifiers
     """
 
-    _index_names = ["p1"]
-    _param_names = []
+    _default_index_names = ["p1"]
+    _default_param_names = ["x"]
+    _default_id = 0
 
     def __cinit__(
             self,
             indices: Iterable[int],
-            parameters: Iterable[float]):
+            parameters: Iterable[float],
+            *,
+            group: int = 0,
+            id: Optional[int] = None,
+            index_names: Optional[Iterable[str]] = None,
+            param_names: Optional[Iterable[str]] = None,
+            **kwargs):
 
         cdef AINDEX i, index
         cdef AVALUE param
@@ -57,6 +89,8 @@ cdef class Interaction:
         for i, param in enumerate(parameters):
             self._parameters[i] = param
 
+        self.group = group
+
     def __dealloc__(self):
         if self._indices != NULL:
             free(self._indices)
@@ -64,14 +98,33 @@ cdef class Interaction:
         if self._parameters != NULL:
             free(self._parameters)
 
-    def __init__(self, *args, **kwargs):
-        self.group = 0
+    def __init__(
+            self,
+            indices: Iterable[int],
+            parameters: Iterable[float],
+            *,
+            group: int = 0,
+            id: Optional[int] = None,
+            index_names: Optional[Iterable[str]] = None,
+            param_names: Optional[Iterable[str]] = None,
+            **kwargs):
 
-        self._id = 0
+        if index_names is None:
+            index_names = self._default_index_names
+        self._index_names = index_names
+
+        if param_names is None:
+            param_names = self._default_param_names
+        self._param_names = param_names
+
         self._dindex = len(self._index_names)
         self._dparam = len(self._param_names)
 
         self._check_index_param_consistency()
+
+        if id is None:
+            id = self._default_id
+        self._id = id
 
     def __repr__(self):
         attr_repr = ", ".join(
@@ -91,17 +144,28 @@ cdef class Interaction:
         return self._n_indices / self._dindex
 
     @classmethod
-    def from_mappings(cls, interactions: Iterable[Mapping[str, Union[float, int]]]):
+    def from_mappings(
+            cls,
+            interactions: Iterable[Mapping[str, Union[float, int]]],
+            group=0, id=None,
+            index_names=None, param_names=None, **kwargs):
+
+        if index_names is None:
+            index_names = cls._default_index_names
+
+        if param_names is None:
+            param_names = cls._default_param_names
+
         indices = []
         parameters = []
         for mapping in interactions:
-            for name in cls._index_names:
+            for name in index_names:
                 indices.append(mapping[name])
 
-            for name in cls._param_names:
+            for name in param_names:
                 parameters.append(mapping[name])
 
-        return cls(indices, parameters)
+        return cls(indices, parameters, group, id, index_names, param_names, **kwargs)
 
     cpdef void _check_index_param_consistency(self) except *:
         """Raise error if indices and parameters do not match"""
@@ -168,14 +232,18 @@ cdef class Interaction:
             self,
             AVALUE[::1] configuration,
             AVALUE[::1] forces,
-            system_support support,
-            resources res):
+            system_support support):
+
+        cdef resources res = allocate_resources(self._support)
 
         self._add_all_forces(
                 &configuration[0],
                 &forces[0],
                 support, res
                 )
+
+        if res.rv != NULL:
+            free(res.rv)
 
     cdef void _add_all_forces(
             self,
@@ -210,10 +278,10 @@ cdef class Interaction:
             )
 
     cdef AVALUE _get_total_energy(
-        self,  AVALUE *configuration, system_support support) nogil
+            self,  AVALUE *configuration, system_support support) nogil:
 
         cdef AINDEX index
-        cdef AVALUE energy
+        cdef AVALUE energy = 0
 
         for index in range(self._n_indices / self._dindex):
             energy = energy + self._get_energy_by_index(
@@ -231,20 +299,61 @@ cdef class Interaction:
             system_support support) nogil: ...
 
 
+cdef class ConstantBias(Interaction):
+    """Constant force applied to a single atom in each dimension
+
+    On initialisation a list of parameter names should be given
+    that matches in length the number of dimensions per atom.
+    """
+
+    _default_index_names = ["p1"]
+    _default_param_names = []
+    _default_id = 10
+
+    def __init__(self, *args, **kwargs):
+        if kwargs["param_names"] is None:
+            raise ValueError(
+                "This interaction type requires `param_names`"
+                )
+
+        super().__init__(*args, **kwargs)
+
+    cdef void _add_force_by_index(
+            self,
+            AINDEX index,
+            AVALUE *configuration,
+            AVALUE *forces,
+            system_support support,
+            resources res) nogil:
+        """Evaluate biasing force
+
+        Args:
+            index: Index of interaction
+            configuration: Pointer to atom position array
+            forces: Pointer to forces array.
+                Force in (kJ / (mol nm)).
+        """
+
+        cdef AINDEX p1 = self._indices[index * self._dindex]
+        cdef AVALUE *fv1
+        cdef AVALUE *b
+
+        fv1 = &forces[p1 * support.dim_per_atom]
+        b = &self._parameters[index * self._dparam]
+
+        for i in range(support.dim_per_atom):
+            fv1[i] += b[i]
+
+
 cdef class HarmonicBond(Interaction):
     """Harmonic spring force approximating a chemical bond"""
 
-    _index_names = ["p1", "p2"]
-    _param_names = ["r0", "k"]
+    _default_index_names = ["p1", "p2"]
+    _default_param_names = ["r0", "k"]
+    _default_id = 1
 
     def __init__(self, *args, **kwargs):
-        self.group = 0
-
-        self._id = 1
-        self._dindex = len(self._index_names)
-        self._dparam = len(self._param_names)
-
-        self._check_index_param_consistency()
+        super().__init__(*args, **kwargs)
 
     cdef void _add_force_by_index(
             self,
@@ -259,7 +368,7 @@ cdef class HarmonicBond(Interaction):
             index: Index of interaction
             configuration: Pointer to atom position array
             forces: Pointer to forces array.
-                Force in (kJ / (mol nm))
+                Force in (kJ / (mol nm)).
         """
 
         cdef AINDEX i
@@ -272,7 +381,7 @@ cdef class HarmonicBond(Interaction):
         cdef AVALUE *fv2
 
         r = _euclidean_distance(
-            res.rv[0],
+            &res.rv[0],
             &configuration[p1 * support.dim_per_atom],
             &configuration[p2 * support.dim_per_atom]
             )
@@ -281,26 +390,21 @@ cdef class HarmonicBond(Interaction):
         fv2 = &forces[p2 * support.dim_per_atom]
 
         f = -k * (r - r0)
-        for i in range(3):
+        for i in range(support.dim_per_atom):
             _f = f * res.rv[i] / r
             fv1[i] += _f
             fv2[i] -= _f
 
 
-cdef class ForceLJ(Force):
+cdef class LJ(Interaction):
     """Harmonic spring force approximating a chemical bond"""
 
-    _index_names = ["p1", "p2"]
-    _param_names = ["sigma", "epsilon"]
+    _default_index_names = ["p1", "p2"]
+    _default_param_names = ["sigma", "epsilon"]
+    _default_id = 1
 
     def __init__(self, *args, **kwargs):
-        self.group = 0
-
-        self._id = 2
-        self._dindex = len(self._index_names)
-        self._dparam = len(self._param_names)
-
-        self._check_index_param_consistency()
+        super().__init__(*args, **kwargs)
 
     cdef void _add_contribution(
             self,
@@ -329,16 +433,16 @@ cdef class ForceLJ(Force):
 
         r = _euclidean_distance(
             &res.rv[0],
-            &configuration[p1 * 3],
-            &configuration[p2 * 3]
+            &configuration[p1 * support.dim_per_atom],
+            &configuration[p2 * support.dim_per_atom]
             )
 
-        fv1 = &forces[p1 * 3]
-        fv2 = &forces[p2 * 3]
+        fv1 = &forces[p1 * support.dim_per_atom]
+        fv2 = &forces[p2 * support.dim_per_atom]
 
         f = 24 * e * (2 * cpow(s, 12) / cpow(r, 13) - cpow(s, 6) / cpow(r, 7))
-        for i in range(3):
-            _f = f * self.rv[i] / r
+        for i in range(support.dim_per_atom):
+            _f = f * res.rv[i] / r
             fv1[i] += _f
             fv2[i] -= _f
 

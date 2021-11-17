@@ -2,7 +2,7 @@ import numpy as np
 cimport numpy as np
 
 from libc.math cimport sqrt as csqrt, pow as cpow
-from eski.primitive_types import P_AINDEX, P_AVALUE
+from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
 
 
 cdef inline AVALUE _euclidean_distance(

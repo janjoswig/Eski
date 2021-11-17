@@ -7,16 +7,18 @@ from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
 
 
 cdef class System:
-    """MD System"""
+    """Representing a simulated (molecular) system"""
 
     def __cinit__(
             self,
             configuration,
+            *,
             dim_per_atom,
             velocities=None,
             atoms=None,
             interactions=None,
             drivers=None,
+            reporters=None,
             bounds=None,
             desc=None):
 
@@ -32,15 +34,14 @@ cdef class System:
             )
 
         n_dim = self._configuration.shape[0]
-        dim_per_atom = dim_per_atom
         n_atoms = n_dim // dim_per_atom
-        assert n_dim  == n_atoms * dim_per_atom
+        assert n_dim  == n_atoms * dim_per_atom, "Number of dimensions does not match dimensions per atoms"
 
         self._support = system_support(n_atoms, n_dim, dim_per_atom)
         self.allocate_atoms()
 
         if atoms is not None:
-            assert len(atoms) == self._n_atoms
+            assert len(atoms) == n_atoms
             make_internal_atoms(atoms, self._atoms)
 
         if velocities is None:
@@ -67,8 +68,12 @@ cdef class System:
             drivers = []
         self.drivers = drivers
 
+        if reporters is None:
+            reporters = []
+        self.reporters = reporters
+
         if bounds is None:
-            self._bounds = np.zeros(self._dim_per_atom)
+            self._bounds = np.zeros(dim_per_atom)
             self._use_pbc = False
         else:
             self._bounds = bounds
@@ -110,14 +115,14 @@ cdef class System:
         else:
             desc_str = f"{self.desc!r}, "
 
-        if self._n_atoms == 1:
+        if self._support.n_atoms == 1:
             atoms_str = "1 atom"
         else:
             atoms_str = f"{self.n_atoms} atoms"
 
         dim_str = f" ({self.dim_per_atom}D)"
 
-        return f"{self.__class__.__name__}({desc_str}{atoms_str})"
+        return f"{self.__class__.__name__}({desc_str}{atoms_str}{dim_str})"
 
     cdef void allocate_atoms(self):
         self._atoms = <internal_atom*>malloc(
@@ -132,7 +137,7 @@ cdef class System:
 
         cdef AINDEX i
 
-        for i in range(self._n_dim):
+        for i in range(self._support.n_dim):
             self._forces[i] = 0
 
     cpdef void step(self, Py_ssize_t n):
@@ -140,15 +145,9 @@ cdef class System:
 
         cdef Interaction interaction
         cdef Driver driver
+        cdef Reporter reporter
 
-        cdef AVALUE *rv = <AVALUE*>malloc(
-            self._support.dim_per_atom * sizeof(AVALUE)
-            )
-
-        if rv == NULL:
-            raise MemoryError()
-
-        cdef resources res = resources(rv)
+        cdef resources res = allocate_resources(self._support)
 
         self._step = 0
 
@@ -160,8 +159,8 @@ cdef class System:
                 interaction._add_all_forces(
                     &self._configuration[0],
                     &self._forces[0],
-                    &self._support
-                    &res
+                    self._support,
+                    res
                     )
 
             for driver in self.drivers:
@@ -170,7 +169,7 @@ cdef class System:
                     &self._velocities[0],
                     &self._forces[0],
                     &self._atoms[0],
-                    &self._support
+                    self._support
                     )
 
             # self.apply_pbc
@@ -179,5 +178,8 @@ cdef class System:
             #     if self._step % reporter.interval == 0:
             #         reporter.report(self)
 
-        if rv != NULL:
-            free(rv)
+            for reporter in self.reporters
+
+        # TODO: Deallocation function
+        if res.rv != NULL:
+            free(res.rv)

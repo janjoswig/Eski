@@ -12,8 +12,10 @@ cdef class Interaction:
 
     cdef public:
         AINDEX group
-    cdef:
         AINDEX _id
+    cdef:
+        list _index_names
+        list _param_names
         AINDEX *_indices
         AVALUE *_parameters
         AINDEX _dindex, _dparam
@@ -21,7 +23,7 @@ cdef class Interaction:
 
     cpdef void add_all_forces(
         self,  AVALUE[::1] configuration,  AVALUE[::1] forces,
-        system_support support, resources res)
+        system_support support)
 
     cdef void _add_all_forces(
         self,  AVALUE *configuration, AVALUE *forces,
@@ -53,4 +55,4 @@ cdef class Interaction:
     cpdef void _check_interaction_index(self, AINDEX index) except *
 
 
-cdef class HarmonicBond(Interaction):
+cdef resources allocate_resources(system_support support)

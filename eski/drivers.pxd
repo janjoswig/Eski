@@ -1,5 +1,5 @@
 from eski.primitive_types cimport AINDEX, AVALUE
-from eski.atoms cimport internal_atom
+from eski.atoms cimport internal_atom, system_support
 
 cdef class Driver:
     cdef:
@@ -9,16 +9,16 @@ cdef class Driver:
 
     cpdef void update(
             self,
-            AVALUE[:, ::1] structure,
-            AVALUE[:, ::1] velocities,
-            AVALUE[:, ::1] forcevectors,
+            AVALUE[::1] configuration,
+            AVALUE[::1] velocities,
+            AVALUE[::1] forces,
             list atoms,
-            AINDEX n_atoms)
+            system_support support)
 
     cdef void _update(
             self,
-            AVALUE *structure,
+            AVALUE *configuration,
             AVALUE *velocities,
-            AVALUE *forcevectors,
+            AVALUE *forces,
             internal_atom *atoms,
-            AINDEX n_atoms) nogil
+            system_support support) nogil
