@@ -179,12 +179,33 @@ class CustomInteraction(ABC):
                 )
 
     def add_all_forces(self, system):
+        cdef AINDEX index
+
         for index in range(self._n_indices // self._dindex):
             self.add_force_by_index(index, system)
 
     @abstractmethod
     def add_force_by_index(self, AINDEX index, system): ...
 
+
+    def get_total_energy(
+            self,  sytem):
+
+        cdef AINDEX index
+        cdef AVALUE energy = 0
+
+        for index in range(self._n_indices / self._dindex):
+            energy = energy + self.get_energy_by_index(
+                index, system
+                )
+
+        return energy
+
+    @abstractmethod
+    def get_energy_by_index(
+            self,
+            AINDEX index,
+            system): ...
 
 cdef class Interaction:
     """Base class for interaction to evaluate
@@ -498,6 +519,14 @@ cdef class ConstantBias(Interaction):
         for i in range(support.dim_per_atom):
             fv1[i] += b[i]
 
+    cdef AVALUE _get_energy_by_index(
+            self,
+            AINDEX index,
+            AVALUE *configuration,
+            system_support support) nogil:
+
+        return 0
+
 
 cdef class HarmonicBond(Interaction):
     """Harmonic spring force approximating a chemical bond"""
@@ -537,7 +566,8 @@ cdef class HarmonicBond(Interaction):
         r = _euclidean_distance(
             &res.rv[0],
             &configuration[p1 * support.dim_per_atom],
-            &configuration[p2 * support.dim_per_atom]
+            &configuration[p2 * support.dim_per_atom],
+            support.dim_per_atom
             )
 
         fv1 = &forces[p1 * support.dim_per_atom]
@@ -548,6 +578,27 @@ cdef class HarmonicBond(Interaction):
             _f = f * res.rv[i] / r
             fv1[i] += _f
             fv2[i] -= _f
+
+    cdef AVALUE _get_energy_by_index(
+            self,
+            AINDEX index,
+            AVALUE *configuration,
+            system_support support) nogil:
+
+        cdef AVALUE r
+        cdef AINDEX p1 = self._indices[index * self._dindex]
+        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
+        cdef AVALUE r0 = self._parameters[index * self._dparam]
+        cdef AVALUE k = self._parameters[index * self._dparam + 1]
+
+        r = _euclidean_distance(
+            &res.rv[0],
+            &configuration[p1 * support.dim_per_atom],
+            &configuration[p2 * support.dim_per_atom],
+            support.dim_per_atom
+            )
+
+        return 0.5 * k * cpow(r - r0, 2)
 
 
 cdef class LJ(Interaction):
@@ -588,7 +639,8 @@ cdef class LJ(Interaction):
         r = _euclidean_distance(
             &res.rv[0],
             &configuration[p1 * support.dim_per_atom],
-            &configuration[p2 * support.dim_per_atom]
+            &configuration[p2 * support.dim_per_atom],
+            support.dim_per_atom
             )
 
         fv1 = &forces[p1 * support.dim_per_atom]
@@ -599,6 +651,27 @@ cdef class LJ(Interaction):
             _f = f * res.rv[i] / r
             fv1[i] += _f
             fv2[i] -= _f
+
+    cdef AVALUE _get_energy_by_index(
+            self,
+            AINDEX index,
+            AVALUE *configuration,
+            system_support support) nogil:
+
+        cdef AVALUE r
+        cdef AINDEX p1 = self._indices[index * self._dindex]
+        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
+        cdef AVALUE e = self._parameters[index * self._dparam]
+        cdef AVALUE s = self._parameters[index * self._dparam + 1]
+
+        r = _euclidean_distance(
+            &res.rv[0],
+            &configuration[p1 * support.dim_per_atom],
+            &configuration[p2 * support.dim_per_atom],
+            support.dim_per_atom
+            )
+
+        return 4 * e * (cpow(s / r, 12) - cpow(s / r, 6))
 
     @staticmethod
     def lorentz_berthelot_combination(
