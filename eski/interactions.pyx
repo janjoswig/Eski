@@ -189,7 +189,7 @@ class CustomInteraction(ABC):
 
 
     def get_total_energy(
-            self,  sytem):
+            self,  system):
 
         cdef AINDEX index
         cdef AVALUE energy = 0
@@ -448,12 +448,15 @@ cdef class Interaction:
     cpdef AVALUE get_total_energy(
         self,  AVALUE[::1] configuration, system_support support):
 
+        cdef resources res = allocate_resources(self._support)
+
         return self._get_total_energy(
-            &configuration[0], support
+            &configuration[0], support, res
             )
 
     cdef AVALUE _get_total_energy(
-            self,  AVALUE *configuration, system_support support) nogil:
+            self,  AVALUE *configuration,
+            system_support support, resources res) nogil:
 
         cdef AINDEX index
         cdef AVALUE energy = 0
@@ -462,7 +465,8 @@ cdef class Interaction:
             energy = energy + self._get_energy_by_index(
                 index,
                 configuration,
-                support
+                support,
+                res
                 )
 
         return energy
@@ -471,7 +475,8 @@ cdef class Interaction:
             self,
             AINDEX index,
             AVALUE *configuration,
-            system_support support) nogil: ...
+            system_support support,
+            resources res) nogil: ...
 
 
 cdef class ConstantBias(Interaction):
@@ -523,7 +528,8 @@ cdef class ConstantBias(Interaction):
             self,
             AINDEX index,
             AVALUE *configuration,
-            system_support support) nogil:
+            system_support support,
+            resources res) nogil:
 
         return 0
 
@@ -583,7 +589,8 @@ cdef class HarmonicBond(Interaction):
             self,
             AINDEX index,
             AVALUE *configuration,
-            system_support support) nogil:
+            system_support support,
+            resources res) nogil:
 
         cdef AVALUE r
         cdef AINDEX p1 = self._indices[index * self._dindex]
@@ -656,7 +663,8 @@ cdef class LJ(Interaction):
             self,
             AINDEX index,
             AVALUE *configuration,
-            system_support support) nogil:
+            system_support support,
+            resources res) nogil:
 
         cdef AVALUE r
         cdef AINDEX p1 = self._indices[index * self._dindex]

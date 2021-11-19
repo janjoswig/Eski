@@ -43,13 +43,14 @@ cdef class Interaction:
 
     cdef AVALUE _get_total_energy(
         self,  AVALUE *configuration,
-        system_support support) nogil
+        system_support support, resources res) nogil
 
     cdef AVALUE _get_energy_by_index(
             self,
             AINDEX index,
             AVALUE *configuration,
-            system_support support) nogil
+            system_support support,
+            resources res) nogil
 
     cpdef void _check_index_param_consistency(self) except *
     cpdef void _check_interaction_index(self, AINDEX index) except *

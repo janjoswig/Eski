@@ -1569,8 +1569,8 @@ struct __pyx_vtabstruct_4eski_12interactions_Interaction {
   void (*_add_all_forces)(struct __pyx_obj_4eski_12interactions_Interaction *, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_5atoms_system_support, __pyx_t_4eski_12interactions_resources);
   void (*_add_force_by_index)(struct __pyx_obj_4eski_12interactions_Interaction *, __pyx_t_4eski_15primitive_types_AINDEX, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_5atoms_system_support, __pyx_t_4eski_12interactions_resources);
   __pyx_t_4eski_15primitive_types_AVALUE (*get_total_energy)(struct __pyx_obj_4eski_12interactions_Interaction *, __Pyx_memviewslice, __pyx_t_4eski_5atoms_system_support, int __pyx_skip_dispatch);
-  __pyx_t_4eski_15primitive_types_AVALUE (*_get_total_energy)(struct __pyx_obj_4eski_12interactions_Interaction *, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_5atoms_system_support);
-  __pyx_t_4eski_15primitive_types_AVALUE (*_get_energy_by_index)(struct __pyx_obj_4eski_12interactions_Interaction *, __pyx_t_4eski_15primitive_types_AINDEX, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_5atoms_system_support);
+  __pyx_t_4eski_15primitive_types_AVALUE (*_get_total_energy)(struct __pyx_obj_4eski_12interactions_Interaction *, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_5atoms_system_support, __pyx_t_4eski_12interactions_resources);
+  __pyx_t_4eski_15primitive_types_AVALUE (*_get_energy_by_index)(struct __pyx_obj_4eski_12interactions_Interaction *, __pyx_t_4eski_15primitive_types_AINDEX, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_5atoms_system_support, __pyx_t_4eski_12interactions_resources);
   void (*_check_index_param_consistency)(struct __pyx_obj_4eski_12interactions_Interaction *, int __pyx_skip_dispatch);
   void (*_check_interaction_index)(struct __pyx_obj_4eski_12interactions_Interaction *, __pyx_t_4eski_15primitive_types_AINDEX, int __pyx_skip_dispatch);
 };

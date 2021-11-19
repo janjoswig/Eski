@@ -41,6 +41,6 @@ def euclidean_distance(p1, p2):
 
     cdef AVALUE[::1] p1view = p1
     cdef AVALUE[::1] p2view = p2
-    cdef AVALUE[::1] rv = np.zeros(3, dtype=P_AVALUE)
+    cdef AVALUE[::1] rv = np.zeros(p1.shape[0], dtype=P_AVALUE)
 
-    return _euclidean_distance(&rv[0], &p1view[0], &p2view[0])
+    return _euclidean_distance(&rv[0], &p1view[0], &p2view[0], p1.shape[0])
