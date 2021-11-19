@@ -6,7 +6,7 @@ from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
 
 
 cdef inline AVALUE _euclidean_distance(
-        AVALUE *rvptr, AVALUE *p1ptr, AVALUE *p2ptr) nogil:
+        AVALUE *rvptr, AVALUE *p1ptr, AVALUE *p2ptr, AINDEX d) nogil:
     """Calculate euclidean distance in 3D
 
     Args:
@@ -21,7 +21,7 @@ cdef inline AVALUE _euclidean_distance(
     cdef AINDEX i
     cdef AVALUE r = 0
 
-    for i in range(3):
+    for i in range(d):
         rvptr[i] = p1ptr[i] - p2ptr[i]
         r += cpow(rvptr[i], 2)
 
