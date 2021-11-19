@@ -125,6 +125,11 @@ cdef class Driver:
 
 
 cdef class EulerIntegrator(Driver):
+    """Propagate positions and velocities with a forward Euler scheme
+
+    Parameters:
+        dt:
+    """
 
     _param_names = ["dt"]
 
@@ -140,18 +145,19 @@ cdef class EulerIntegrator(Driver):
             internal_atom *atoms,
             system_support support) nogil:
 
-        cdef AINDEX index, d
+        cdef AINDEX index, d, i
+        cdef AVALUE dt = self._parameters[0]
 
         for index in range(support.n_atoms):
             for d in range(support.dim_per_atom):
-                configuration[index * support.dim_per_atom + d] = (
-                    configuration[index * support.dim_per_atom + d]
-                    + velocities[index * support.dim_per_atom + d] * self._parameters[0]
-                    + forces[index * support.dim_per_atom + d] * 1.661e-12
-                    * self._parameters[0]**2 / (2 * atoms[index].mass)
+                i = index * support.dim_per_atom + d
+                configuration[i] = (
+                    configuration[i]
+                    + velocities[i] * dt
+                    + forces[i] * dt**2 / (2 * atoms[index].mass)
                     )
-                velocities[index * support.dim_per_atom + d] = (
-                    velocities[index * support.dim_per_atom + d]
-                    + forces[index * support.dim_per_atom + d]
-                    * self._parameters[0] / atoms[index].mass
+                velocities[i] = (
+                    velocities[i]
+                    + forces[i]
+                    * dt / atoms[index].mass
                     )

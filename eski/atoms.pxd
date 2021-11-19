@@ -1,4 +1,4 @@
-from eski.primitive_types cimport AINDEX, AVALUE
+from eski.primitive_types cimport AINDEX, AVALUE, ABOOL
 
 
 ctypedef struct internal_atom:

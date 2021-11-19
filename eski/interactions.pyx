@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+
 from typing import Iterable, Mapping
 from typing import Optional, Union
 
@@ -32,6 +34,158 @@ cdef resources allocate_resources(system_support support):
     return res
 
 
+class CustomInteraction(ABC):
+
+    _default_index_names = ["p1"]
+    _default_param_names = []
+    _default_id = 99
+
+    def __init__(
+            self,
+            indices: Iterable[int],
+            parameters: Iterable[float],
+            *,
+            group: int = 0,
+            _id: Optional[int] = None,
+            index_names: Optional[Iterable[str]] = None,
+            param_names: Optional[Iterable[str]] = None,
+            **kwargs):
+
+        self._n_indices = len(indices)
+        self._n_parameters = len(parameters)
+
+        self._indices = indices
+        self._parameters = parameters
+
+        if index_names is None:
+            index_names = self._default_index_names
+        self._index_names = index_names
+
+        if param_names is None:
+            param_names = self._default_param_names
+        self._param_names = param_names
+
+        self._dindex = len(self._index_names)
+        self._dparam = len(self._param_names)
+
+        self._check_index_param_consistency()
+
+        self.group = group
+
+        if _id is None:
+            _id = self._default_id
+        self._id = _id
+
+    def __repr__(self):
+        attr_repr = ", ".join(
+            [
+                f"group={self.group}",
+                f"n_interactions={self.n_interactions}"
+            ]
+        )
+        return f"{self.__class__.__name__}({attr_repr})"
+
+    @property
+    def id(self):
+       return self._id
+
+    @property
+    def n_interactions(self):
+        return self._n_indices // self._dindex
+
+    @classmethod
+    def from_mappings(
+            cls,
+            interactions: Iterable[Mapping[str, Union[float, int]]],
+            group=0, _id=None,
+            index_names=None, param_names=None, **kwargs):
+
+        if index_names is None:
+            index_names = cls._default_index_names
+
+        if param_names is None:
+            param_names = cls._default_param_names
+
+        indices = []
+        parameters = []
+        for mapping in interactions:
+            for name in index_names:
+                indices.append(mapping[name])
+
+            for name in param_names:
+                parameters.append(mapping[name])
+
+        return cls(indices, parameters, group, _id, index_names, param_names, **kwargs)
+
+    def _check_index_param_consistency(self):
+        """Raise error if indices and parameters do not match"""
+
+        if (self._n_indices % self._dindex) > 0:
+            raise ValueError(
+                f"Wrong number of 'indices'; must be multiple of {self._dindex}"
+                )
+
+        if self._dparam == 0:
+            if self._n_parameters == 0:
+                return
+            raise ValueError(
+                f"Force {type(self).__name__!r} takes no parameters"
+                )
+
+        if (self._n_parameters % self._dparam) > 0:
+            raise ValueError(
+                f"Wrong number of 'parameters'; must be multiple of {self._dparam}"
+                )
+
+        len_no_match = (
+            (self._n_indices / self._dindex) !=
+            (self._n_parameters / self._dparam)
+        )
+        if len_no_match:
+            raise ValueError(
+                "Length of 'indices' and 'parameters' does not match"
+                )
+
+    def get_interaction(self, AINDEX index):
+        """Return info for interaction
+
+        Args:
+            index: Index of the interaction to get the info for
+
+        Returns:
+            Dictionary with keys according to
+            :obj:`self._index_names` and :obj:`self._param_names` and
+            corresponding values
+        """
+
+        self._check_interaction_index(index)
+
+        cdef dict info = {}
+        cdef AINDEX i
+        cdef str name
+
+        for i, name in enumerate(self._index_names):
+            info[name] = self._indices[index * self._dindex + i]
+
+        for i, name in enumerate(self._param_names):
+            info[name] = self._parameters[index * self._dparam + i]
+
+        return info
+
+    def _check_interaction_index(self, AINDEX index):
+        if (index < 0) or (index >= self.n_interactions):
+            raise IndexError(
+                "Interaction index out of range"
+                )
+
+    def add_all_forces(self, system):
+        for index in range(self._n_indices // self._dindex):
+            self.add_force_by_index(index, system)
+
+    @abstractmethod
+    def add_force_by_index(self, AINDEX index, system): ...
+
+
 cdef class Interaction:
     """Base class for interaction to evaluate
 
@@ -60,7 +214,7 @@ cdef class Interaction:
             parameters: Iterable[float],
             *,
             group: int = 0,
-            id: Optional[int] = None,
+            _id: Optional[int] = None,
             index_names: Optional[Iterable[str]] = None,
             param_names: Optional[Iterable[str]] = None,
             **kwargs):
@@ -104,7 +258,7 @@ cdef class Interaction:
             parameters: Iterable[float],
             *,
             group: int = 0,
-            id: Optional[int] = None,
+            _id: Optional[int] = None,
             index_names: Optional[Iterable[str]] = None,
             param_names: Optional[Iterable[str]] = None,
             **kwargs):
@@ -122,9 +276,9 @@ cdef class Interaction:
 
         self._check_index_param_consistency()
 
-        if id is None:
-            id = self._default_id
-        self._id = id
+        if _id is None:
+            _id = self._default_id
+        self._id = _id
 
     def __repr__(self):
         attr_repr = ", ".join(
@@ -147,7 +301,7 @@ cdef class Interaction:
     def from_mappings(
             cls,
             interactions: Iterable[Mapping[str, Union[float, int]]],
-            group=0, id=None,
+            group=0, _id=None,
             index_names=None, param_names=None, **kwargs):
 
         if index_names is None:
@@ -165,7 +319,7 @@ cdef class Interaction:
             for name in param_names:
                 parameters.append(mapping[name])
 
-        return cls(indices, parameters, group, id, index_names, param_names, **kwargs)
+        return cls(indices, parameters, group, _id, index_names, param_names, **kwargs)
 
     cpdef void _check_index_param_consistency(self) except *:
         """Raise error if indices and parameters do not match"""
@@ -254,7 +408,7 @@ cdef class Interaction:
 
         cdef AINDEX index
 
-        for index in range(self._n_indices / self._dindex):
+        for index in range(self._n_indices // self._dindex):
             self._add_force_by_index(
                 index,
                 configuration,
@@ -406,7 +560,7 @@ cdef class LJ(Interaction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    cdef void _add_contribution(
+    cdef void _add_force_by_index(
             self,
             AINDEX index,
             AVALUE *configuration,

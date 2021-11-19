@@ -10,6 +10,7 @@ cdef class System:
     cdef public:
         str desc
         list interactions
+        list custom_interactions
         list drivers
         list reporters
 
@@ -22,7 +23,31 @@ cdef class System:
         AVALUE[::1] _bounds
         bint _use_pbc
         Py_ssize_t _step
+        Py_ssize_t _target_step
 
     cdef void allocate_atoms(self)
     cdef void reset_forces(self) nogil
-    cpdef void step(self, Py_ssize_t n)
+    cpdef void simulate(self, Py_ssize_t n)
+
+
+cdef class Reporter:
+
+    cdef public:
+        Py_ssize_t interval
+
+    cpdef void reset(self)
+    cpdef void report(self, System system)
+
+
+cdef class ListReporter(Reporter):
+
+    cdef public:
+        list output
+        list reported_attrs
+
+
+cdef class PrintReporter(Reporter):
+
+    cdef public:
+        list reported_attrs
+        str message_template
