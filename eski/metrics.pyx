@@ -1,8 +1,27 @@
 import numpy as np
 cimport numpy as np
 
-from libc.math cimport sqrt as csqrt, pow as cpow
+from libc.stdlib cimport rand, RAND_MAX
+from libc.math cimport sqrt as csqrt, pow as cpow, log as clog
 from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
+
+
+cdef double random_uniform() nogil:
+    cdef double r = rand()
+    return r / RAND_MAX
+
+
+cdef double random_gaussian() nogil:
+    cdef double x1, x2, w
+
+    w = 2.0
+    while (w >= 1.0):
+        x1 = 2.0 * random_uniform() - 1.0
+        x2 = 2.0 * random_uniform() - 1.0
+        w = x1 * x1 + x2 * x2
+
+    w = ((-2.0 * clog(w)) / w) ** 0.5
+    return x1 * w
 
 
 cdef inline AVALUE _euclidean_distance(
