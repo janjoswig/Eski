@@ -5,9 +5,11 @@ import numpy as np
 cimport numpy as np
 
 from libc.stdlib cimport malloc, free
+from libc.math cimport sqrt as csqrt, pow as cpow, log as clog
 
 from eski.primitive_types import P_AINDEX, P_AVALUE
 from eski.atoms cimport internal_atom, make_internal_atoms
+from eski.metrics cimport random_gaussian
 
 
 cdef class Driver:
@@ -160,4 +162,45 @@ cdef class EulerIntegrator(Driver):
                     velocities[i]
                     + forces[i]
                     * dt / atoms[index].mass
+                    )
+
+
+cdef class EulerMaruyamaIntegrator(Driver):
+    """Propagate positions and velocities with a Euler-Maruyama scheme
+
+    Parameters:
+        dt:
+        friction: gamma
+        T:
+    """
+
+    _param_names = ["dt", "friction", "T"]
+
+    def __init__(self, *args, **kwargs):
+        self._dparam = 3
+        self._check_param_consistency()
+
+    cdef void _update(
+            self,
+            AVALUE *configuration,
+            AVALUE *velocities,
+            AVALUE *forces,
+            internal_atom *atoms,
+            system_support support) nogil:
+
+        cdef AINDEX index, d, i
+        cdef AVALUE dt = self._parameters[0]
+        cdef AVALUE friction = self._parameters[1]
+        cdef AVALUE T = self._parameters[2]
+        cdef AVALUE sigma
+
+        for index in range(support.n_atoms):
+            sigma = csqrt(2 * 0.008314463 * T / atoms[index].mass / friction)
+
+            for d in range(support.dim_per_atom):
+                i = index * support.dim_per_atom + d
+                configuration[i] = (
+                    configuration[i]
+                    + forces[i] * dt / atoms[index].mass / friction
+                    + sigma * random_gaussian() * csqrt(dt)
                     )
