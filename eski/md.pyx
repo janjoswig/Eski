@@ -86,6 +86,7 @@ cdef class System:
             self._use_pbc = True
 
         self._step = 0
+        self._target_step = 0
 
     def __dealloc__(self):
         if self._atoms != NULL:
@@ -165,7 +166,7 @@ cdef class System:
         cdef resources res = allocate_resources(self._support)
 
         self._step = 0
-        self._target_step = n
+        self._target_step += n
 
         for self._step in range(1, n + 1):
 
