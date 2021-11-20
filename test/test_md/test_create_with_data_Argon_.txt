@@ -1,1 +1,0 @@
-System('One lonely argon atom', 1 atom)

@@ -1,0 +1,1 @@
+System('One lonely argon atom', 2 atoms (3D))

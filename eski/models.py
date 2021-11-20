@@ -27,14 +27,25 @@ dummy = Model(
     atoms=None
 )
 
-argon = Model(
-    configuration=np.array([0, 0]),
+argon2D = Model(
+    configuration=np.array([0., 0.]),
     velocities=None,
     desc="One lonely argon atom",
     atoms=[(("Ar", ), {"mass": 40})]
 )
 
+argon_pair3D = Model(
+    configuration=np.array([
+        [0., 0., 0.],
+        [1., 0., 0.]
+        ]),
+    velocities=None,
+    desc="One lonely argon atom",
+    atoms=[(("Ar", ), {"mass": 40}), (("Ar", ), {"mass": 40})]
+)
+
 registered_systems = {
     "Dummy": dummy,
-    "Argon": argon
+    "Argon2D": argon2D,
+    "Argon_pair3D": argon_pair3D
 }

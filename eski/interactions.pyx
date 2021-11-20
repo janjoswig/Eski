@@ -340,7 +340,13 @@ cdef class Interaction:
             for name in param_names:
                 parameters.append(mapping[name])
 
-        return cls(indices, parameters, group, _id, index_names, param_names, **kwargs)
+        return cls(
+            indices, parameters,
+            group=group, _id=_id,
+            index_names=index_names,
+            param_names=param_names,
+            **kwargs
+            )
 
     cpdef void _check_index_param_consistency(self) except *:
         """Raise error if indices and parameters do not match"""

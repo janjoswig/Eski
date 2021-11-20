@@ -7,7 +7,7 @@ from eski import drivers, atoms
 class TestDriver:
 
     @pytest.mark.parametrize(
-        "Driver,parameters",
+        "driver_type,parameters",
         [
             (drivers.Driver, []),
             pytest.param(
@@ -17,57 +17,68 @@ class TestDriver:
             (drivers.EulerIntegrator, [0.1]),
         ]
     )
-    def test_create(self, Driver, parameters, file_regression):
-        driver = Driver(parameters)
+    def test_create(self, driver_type, parameters, file_regression):
+        driver = driver_type(parameters)
         file_regression.check(repr(driver))
 
     @pytest.mark.parametrize(
-        "Driver,parameters",
+        "driver_type,parameters",
         [
             (drivers.Driver, {}),
             (drivers.EulerIntegrator, {"dt": 0.1}),
         ]
     )
-    def test_create_from_mapping(self, Driver, parameters):
-        driver = Driver.from_mapping(parameters)
-        assert isinstance(driver, Driver)
+    def test_create_from_mapping(self, driver_type, parameters):
+        driver = driver_type.from_mapping(parameters)
+        assert isinstance(driver, driver_type)
 
     @pytest.mark.parametrize(
-        "Driver,parameters",
+        "driver_type,parameters",
         [
             (drivers.EulerIntegrator, [0.1]),
         ]
     )
-    def test_update(self, Driver, parameters, num_regression):
-        driver = Driver(parameters)
-        structure = np.array(
+    def test_update(self, driver_type, parameters, num_regression):
+        driver = driver_type(parameters)
+        configuration = np.array(
             [[0, 0, 0],
              [1, 0, 0],
              [0, 1, 0],
              [0, 0, 1]], order="c", dtype=float
-             )
+            )
         velocities = np.array(
             [[0, 0, 0],
              [0, 0, 0],
              [1, 0, 0],
              [0, 0, 1]], order="c", dtype=float
-             )
-        forcevectors = np.array(
+            ).reshape(-1)
+        forces = np.array(
             [[0, 0, 0],
              [1, 0, 0],
              [0, 0, 0],
              [0, 0, -1]], order="c", dtype=float
-             )
+            ).reshape(-1)
+
+        n_atoms = configuration.shape[0]
+        dim_per_atom = configuration.shape[1]
+        configuration = configuration.reshape(-1)
+        n_dim = configuration.shape[0]
+
+        support = {
+            "n_atoms": n_atoms,
+            "n_dim": n_dim,
+            "dim_per_atom": dim_per_atom,
+            }
 
         driver.update(
-            structure,
+            configuration,
             velocities,
-            forcevectors,
-            [atoms.Atom(mass=1) for _ in range(4)],
-            4,
+            forces,
+            [atoms.Atom(mass=1) for _ in range(n_atoms)],
+            support,
             )
 
         num_regression.check({
-            "structure": structure.flatten(),
+            "configuration": configuration.flatten(),
             "velocities": velocities.flatten(),
             })

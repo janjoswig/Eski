@@ -14,7 +14,7 @@ cdef class System:
             self,
             configuration,
             *,
-            dim_per_atom,
+            dim_per_atom=None,
             velocities=None,
             atoms=None,
             interactions=None,
@@ -22,21 +22,38 @@ cdef class System:
             drivers=None,
             reporters=None,
             bounds=None,
-            desc=None):
+            desc=None,
+            copy=False):
 
-        if desc is None:
-            desc = ""
-        self.desc = desc
+        if configuration.ndim == 2:
+            n_atoms, dim_per_atom = configuration.shape
+            configuration = configuration.reshape(-1)
+
+        elif configuration.ndim == 1:
+            if dim_per_atom is None:
+                raise ValueError(
+                    "Parameter `dim_per_atom` is required if "
+                    "configuration.ndim == 1"
+                    )
+
+            if dim_per_atom > 0:
+                n_atoms = configuration.shape[0] // dim_per_atom
+            else:
+                n_atoms = 0
+        else:
+            raise ValueError(
+                f"Parameter `configuration` needs to be a 1D or 2D array "
+                f"but has dimensionality {configuration.ndim}"
+                )
 
         self._configuration = np.array(
             configuration,
-            copy=True,
+            copy=copy,
             dtype=P_AVALUE,
             order="c"
             )
 
         n_dim = self._configuration.shape[0]
-        n_atoms = n_dim // dim_per_atom
         assert n_dim  == n_atoms * dim_per_atom, "Number of dimensions does not match dimensions per atoms"
 
         self._support = system_support(n_atoms, n_dim, dim_per_atom)
@@ -47,11 +64,22 @@ cdef class System:
             make_internal_atoms(atoms, self._atoms)
 
         if velocities is None:
-            velocities = np.zeros_like(configuration)
+            velocities = np.zeros_like(self._configuration)
+
+        if velocities.ndim == 2:
+            velocities = velocities.reshape(-1)
+
+        elif velocities.ndim != 1:
+            raise ValueError(
+                f"Parameter `velocities` needs to be a 1D or 2D array "
+                f"but has dimensionality {velocities.ndim}"
+                )
+
+        assert velocities.shape[0] == configuration.shape[0]
 
         self._velocities = np.array(
             velocities,
-            copy=True,
+            copy=copy,
             dtype=P_AVALUE,
             order="c"
             )
@@ -87,6 +115,10 @@ cdef class System:
 
         self._step = 0
         self._target_step = 0
+
+        if desc is None:
+            desc = ""
+        self.desc = desc
 
     def __dealloc__(self):
         if self._atoms != NULL:
