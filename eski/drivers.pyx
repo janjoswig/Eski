@@ -9,7 +9,7 @@ from libc.math cimport sqrt as csqrt, pow as cpow, log as clog
 
 from eski.primitive_types import P_AINDEX, P_AVALUE
 from eski.atoms cimport internal_atom, make_internal_atoms
-from eski.metrics cimport random_gaussian
+from eski.metrics cimport _random_gaussian
 
 
 cdef class Driver:
@@ -202,5 +202,5 @@ cdef class EulerMaruyamaIntegrator(Driver):
                 configuration[i] = (
                     configuration[i]
                     + forces[i] * dt / atoms[index].mass / friction
-                    + sigma * random_gaussian() * csqrt(dt)
+                    + sigma * _random_gaussian() * csqrt(dt)
                     )

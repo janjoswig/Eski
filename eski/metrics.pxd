@@ -3,8 +3,8 @@ cimport numpy as np
 from eski.primitive_types cimport AINDEX, AVALUE
 
 
-cdef double random_uniform() nogil
-cdef double random_gaussian() nogil
+cdef double _random_uniform() nogil
+cdef double _random_gaussian() nogil
 
 
 cdef AVALUE _euclidean_distance(
