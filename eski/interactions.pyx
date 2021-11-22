@@ -15,9 +15,9 @@ from eski.metrics cimport _euclidean_distance
 from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
 
 
-cdef resources allocate_resources(system_support support):
+cdef resources allocate_resources(system_support support) except *:
     cdef Py_ssize_t i
-    cdef AVALUE *rv
+    cdef AVALUE *rv = NULL
 
     rv = <AVALUE*>malloc(
             support.dim_per_atom * sizeof(AVALUE)
@@ -206,6 +206,7 @@ class CustomInteraction(ABC):
             self,
             AINDEX index,
             system): ...
+
 
 cdef class Interaction:
     """Base class for interaction to evaluate

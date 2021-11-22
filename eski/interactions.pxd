@@ -56,4 +56,4 @@ cdef class Interaction:
     cpdef void _check_interaction_index(self, AINDEX index) except *
 
 
-cdef resources allocate_resources(system_support support)
+cdef resources allocate_resources(system_support support) except *

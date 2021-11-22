@@ -27,6 +27,7 @@ cdef class System:
 
     cdef void allocate_atoms(self)
     cdef void reset_forces(self) nogil
+    cpdef AVALUE potential_energy(self)
     cpdef void simulate(self, Py_ssize_t n)
 
 

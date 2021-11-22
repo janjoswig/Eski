@@ -126,7 +126,14 @@ cdef class System:
 
     @property
     def configuration(self):
-        return np.array(self._configuration, copy=True)
+        return np.asarray(self._configuration)
+
+    def set_configuration(self, value):
+        """Set a new configuration
+
+        Maybe important for simulations where the number of particles
+        can change
+        """
 
     @property
     def velocities(self):
@@ -190,6 +197,28 @@ cdef class System:
 
         for i in range(self._support.n_dim):
             self._forces[i] = 0
+
+    cpdef AVALUE potential_energy(self):
+        """Compute the current potential energy of the system"""
+
+        cdef Interaction interaction
+        cdef object custom_interaction
+
+        cdef resources res = allocate_resources(self._support)
+
+        cdef AVALUE energy = 0
+
+        for interaction in self.interactions:
+            energy += interaction._get_total_energy(
+                &self._configuration[0],
+                self._support,
+                res
+                )
+
+        for custom_interaction in self.custom_interactions:
+            energy += custom_interaction.get_total_energy(self)
+
+        return energy
 
     cpdef void simulate(self, Py_ssize_t n):
         """Perform a number of MD simulation steps"""
