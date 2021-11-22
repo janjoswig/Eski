@@ -1,211 +1,11 @@
 from abc import ABC, abstractmethod
-
 from typing import Iterable, Mapping
 from typing import Optional, Union
 
 cimport cython
-
 import numpy as np
-cimport numpy as np
 
-from libc.stdlib cimport malloc, free
-from libc.math cimport sqrt as csqrt, pow as cpow
-
-from eski.metrics cimport _euclidean_distance
 from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
-
-
-cdef resources allocate_resources(system_support support) except *:
-    cdef Py_ssize_t i
-    cdef AVALUE *rv = NULL
-
-    rv = <AVALUE*>malloc(
-            support.dim_per_atom * sizeof(AVALUE)
-            )
-
-    if rv == NULL:
-        raise MemoryError()
-
-    for i in range(support.dim_per_atom):
-        rv[i] = 0
-
-    cdef resources res = resources(rv)
-
-    return res
-
-
-class CustomInteraction(ABC):
-
-    _default_index_names = ["p1"]
-    _default_param_names = []
-    _default_id = 99
-
-    def __init__(
-            self,
-            indices: Iterable[int],
-            parameters: Iterable[float],
-            *,
-            group: int = 0,
-            _id: Optional[int] = None,
-            index_names: Optional[Iterable[str]] = None,
-            param_names: Optional[Iterable[str]] = None,
-            **kwargs):
-
-        self._n_indices = len(indices)
-        self._n_parameters = len(parameters)
-
-        self._indices = indices
-        self._parameters = parameters
-
-        if index_names is None:
-            index_names = self._default_index_names
-        self._index_names = index_names
-
-        if param_names is None:
-            param_names = self._default_param_names
-        self._param_names = param_names
-
-        self._dindex = len(self._index_names)
-        self._dparam = len(self._param_names)
-
-        self._check_index_param_consistency()
-
-        self.group = group
-
-        if _id is None:
-            _id = self._default_id
-        self._id = _id
-
-    def __repr__(self):
-        attr_repr = ", ".join(
-            [
-                f"group={self.group}",
-                f"n_interactions={self.n_interactions}"
-            ]
-        )
-        return f"{self.__class__.__name__}({attr_repr})"
-
-    @property
-    def id(self):
-       return self._id
-
-    @property
-    def n_interactions(self):
-        return self._n_indices // self._dindex
-
-    @classmethod
-    def from_mappings(
-            cls,
-            interactions: Iterable[Mapping[str, Union[float, int]]],
-            group=0, _id=None,
-            index_names=None, param_names=None, **kwargs):
-
-        if index_names is None:
-            index_names = cls._default_index_names
-
-        if param_names is None:
-            param_names = cls._default_param_names
-
-        indices = []
-        parameters = []
-        for mapping in interactions:
-            for name in index_names:
-                indices.append(mapping[name])
-
-            for name in param_names:
-                parameters.append(mapping[name])
-
-        return cls(indices, parameters, group, _id, index_names, param_names, **kwargs)
-
-    def _check_index_param_consistency(self):
-        """Raise error if indices and parameters do not match"""
-
-        if (self._n_indices % self._dindex) > 0:
-            raise ValueError(
-                f"Wrong number of 'indices'; must be multiple of {self._dindex}"
-                )
-
-        if self._dparam == 0:
-            if self._n_parameters == 0:
-                return
-            raise ValueError(
-                f"Force {type(self).__name__!r} takes no parameters"
-                )
-
-        if (self._n_parameters % self._dparam) > 0:
-            raise ValueError(
-                f"Wrong number of 'parameters'; must be multiple of {self._dparam}"
-                )
-
-        len_no_match = (
-            (self._n_indices / self._dindex) !=
-            (self._n_parameters / self._dparam)
-        )
-        if len_no_match:
-            raise ValueError(
-                "Length of 'indices' and 'parameters' does not match"
-                )
-
-    def get_interaction(self, AINDEX index):
-        """Return info for interaction
-
-        Args:
-            index: Index of the interaction to get the info for
-
-        Returns:
-            Dictionary with keys according to
-            :obj:`self._index_names` and :obj:`self._param_names` and
-            corresponding values
-        """
-
-        self._check_interaction_index(index)
-
-        cdef dict info = {}
-        cdef AINDEX i
-        cdef str name
-
-        for i, name in enumerate(self._index_names):
-            info[name] = self._indices[index * self._dindex + i]
-
-        for i, name in enumerate(self._param_names):
-            info[name] = self._parameters[index * self._dparam + i]
-
-        return info
-
-    def _check_interaction_index(self, AINDEX index):
-        if (index < 0) or (index >= self.n_interactions):
-            raise IndexError(
-                "Interaction index out of range"
-                )
-
-    def add_all_forces(self, system):
-        cdef AINDEX index
-
-        for index in range(self._n_indices // self._dindex):
-            self.add_force_by_index(index, system)
-
-    @abstractmethod
-    def add_force_by_index(self, AINDEX index, system): ...
-
-
-    def get_total_energy(
-            self,  system):
-
-        cdef AINDEX index
-        cdef AVALUE energy = 0
-
-        for index in range(self._n_indices / self._dindex):
-            energy = energy + self.get_energy_by_index(
-                index, system
-                )
-
-        return energy
-
-    @abstractmethod
-    def get_energy_by_index(
-            self,
-            AINDEX index,
-            system): ...
 
 
 cdef class Interaction:
@@ -221,7 +21,7 @@ cdef class Interaction:
         parameters: Iterable of force parameters.
         group: Force group. Useful to distinguish between forces
             that should be evaluated at different times steps.
-        id: Unique ID of this force type.
+        _id: Unique ID of this force type.
         index_names: List of index identifiers.
         param_names: List of parameter identifiers
     """
@@ -317,7 +117,7 @@ cdef class Interaction:
 
     @property
     def n_interactions(self):
-        return self._n_indices / self._dindex
+        return self._n_indices // self._dindex
 
     @classmethod
     def from_mappings(
@@ -412,58 +212,40 @@ cdef class Interaction:
 
     cpdef void add_all_forces(
             self,
-            AVALUE[::1] configuration,
-            AVALUE[::1] forces,
-            system_support support):
+            System system):
 
-        cdef resources res = allocate_resources(self._support)
+        cdef AINDEX index
 
-        self._add_all_forces(
-                &configuration[0],
-                &forces[0],
-                support, res
+        for index in range(self._n_indices // self._dindex):
+            self.add_force_by_index(
+                index,
+                system
                 )
 
-        if res.rv != NULL:
-            free(res.rv)
+    cpdef void add_force_by_index(
+            self,
+            AINDEX index,
+            System system): ...
 
     cdef void _add_all_forces(
             self,
-            AVALUE *configuration,
-            AVALUE *forces,
-            system_support support,
-            resources res) nogil:
+            System system) nogil:
 
         cdef AINDEX index
 
         for index in range(self._n_indices // self._dindex):
             self._add_force_by_index(
                 index,
-                configuration,
-                forces,
-                support, res
+                system
                 )
 
     cdef void _add_force_by_index(
             self,
             AINDEX index,
-            AVALUE *configuration,
-            AVALUE *forces,
-            system_support support,
-            resources res) nogil: ...
+            System system) nogil: ...
 
     cpdef AVALUE get_total_energy(
-        self,  AVALUE[::1] configuration, system_support support):
-
-        cdef resources res = allocate_resources(self._support)
-
-        return self._get_total_energy(
-            &configuration[0], support, res
-            )
-
-    cdef AVALUE _get_total_energy(
-            self,  AVALUE *configuration,
-            system_support support, resources res) nogil:
+            self,  System system):
 
         cdef AINDEX index
         cdef AVALUE energy = 0
@@ -471,9 +253,26 @@ cdef class Interaction:
         for index in range(self._n_indices / self._dindex):
             energy = energy + self._get_energy_by_index(
                 index,
-                configuration,
-                support,
-                res
+                system
+                )
+
+        return energy
+
+    cpdef AVALUE get_energy_by_index(
+            self,
+            AINDEX index,
+            System system): ...
+
+    cdef AVALUE _get_total_energy(
+            self,  System system) nogil:
+
+        cdef AINDEX index
+        cdef AVALUE energy = 0
+
+        for index in range(self._n_indices / self._dindex):
+            energy = energy + self._get_energy_by_index(
+                index,
+                system
                 )
 
         return energy
@@ -481,9 +280,7 @@ cdef class Interaction:
     cdef AVALUE _get_energy_by_index(
             self,
             AINDEX index,
-            AVALUE *configuration,
-            system_support support,
-            resources res) nogil: ...
+            System system) nogil: ...
 
 
 cdef class ConstantBias(Interaction):
@@ -508,10 +305,7 @@ cdef class ConstantBias(Interaction):
     cdef void _add_force_by_index(
             self,
             AINDEX index,
-            AVALUE *configuration,
-            AVALUE *forces,
-            system_support support,
-            resources res) nogil:
+            System system) nogil:
         """Evaluate biasing force
 
         Args:
@@ -524,19 +318,18 @@ cdef class ConstantBias(Interaction):
         cdef AINDEX p1 = self._indices[index * self._dindex]
         cdef AVALUE *fv1
         cdef AVALUE *b
+        cdef AVALUE *forces = &system._forces[0]
 
-        fv1 = &forces[p1 * support.dim_per_atom]
+        fv1 = &forces[p1 * system._dim_per_atom]
         b = &self._parameters[index * self._dparam]
 
-        for i in range(support.dim_per_atom):
+        for i in range(system._dim_per_atom):
             fv1[i] += b[i]
 
     cdef AVALUE _get_energy_by_index(
             self,
             AINDEX index,
-            AVALUE *configuration,
-            system_support support,
-            resources res) nogil:
+            System system) nogil:
 
         return 0
 
@@ -554,17 +347,12 @@ cdef class HarmonicBond(Interaction):
     cdef void _add_force_by_index(
             self,
             AINDEX index,
-            AVALUE *configuration,
-            AVALUE *forces,
-            system_support support,
-            resources res) nogil:
+            System system) nogil:
         """Evaluate harmonic bond force
 
         Args:
             index: Index of interaction
-            configuration: Pointer to atom position array
-            forces: Pointer to forces array.
-                Force in (kJ / (mol nm)).
+            system: :class:`eski.md.System`
         """
 
         cdef AINDEX i
@@ -575,41 +363,45 @@ cdef class HarmonicBond(Interaction):
         cdef AVALUE k = self._parameters[index * self._dparam + 1]
         cdef AVALUE *fv1
         cdef AVALUE *fv2
+        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *configuration = &system._configuration[0]
+        cdef AVALUE *forces = &system._forces[0]
+
 
         r = _euclidean_distance(
-            &res.rv[0],
-            &configuration[p1 * support.dim_per_atom],
-            &configuration[p2 * support.dim_per_atom],
-            support.dim_per_atom
+            &system._resources.rv[0],
+            &configuration[p1 * dim_per_atom],
+            &configuration[p2 * dim_per_atom],
+            system._dim_per_atom
             )
 
-        fv1 = &forces[p1 * support.dim_per_atom]
-        fv2 = &forces[p2 * support.dim_per_atom]
+        fv1 = &forces[p1 * dim_per_atom]
+        fv2 = &forces[p2 * dim_per_atom]
 
         f = -k * (r - r0)
-        for i in range(support.dim_per_atom):
-            _f = f * res.rv[i] / r
+        for i in range(dim_per_atom):
+            _f = f * system._resources.rv[i] / r
             fv1[i] += _f
             fv2[i] -= _f
 
     cdef AVALUE _get_energy_by_index(
             self,
             AINDEX index,
-            AVALUE *configuration,
-            system_support support,
-            resources res) nogil:
+            System system) nogil:
 
         cdef AVALUE r
         cdef AINDEX p1 = self._indices[index * self._dindex]
         cdef AINDEX p2 = self._indices[index * self._dindex + 1]
         cdef AVALUE r0 = self._parameters[index * self._dparam]
         cdef AVALUE k = self._parameters[index * self._dparam + 1]
+        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *configuration = &system._configuration[0]
 
         r = _euclidean_distance(
-            &res.rv[0],
-            &configuration[p1 * support.dim_per_atom],
-            &configuration[p2 * support.dim_per_atom],
-            support.dim_per_atom
+            &system._resources.rv[0],
+            &configuration[p1 * dim_per_atom],
+            &configuration[p2 * dim_per_atom],
+            dim_per_atom
             )
 
         return 0.5 * k * cpow(r - r0, 2)
@@ -628,17 +420,12 @@ cdef class LJ(Interaction):
     cdef void _add_force_by_index(
             self,
             AINDEX index,
-            AVALUE *configuration,
-            AVALUE *forces,
-            system_support support,
-            resources res) nogil:
+            System system) nogil:
         """Evaluate Lennard-Jones force
 
         Args:
             index: Index of interaction
-            configuration: Pointer to atom position array
-            forces: Pointer to forces array.
-                Force in (kJ / (mol nm)).
+            system: :class:`eski.md.System`
         """
 
         cdef AINDEX i
@@ -649,41 +436,44 @@ cdef class LJ(Interaction):
         cdef AVALUE s = self._parameters[index * self._dparam + 1]
         cdef AVALUE *fv1
         cdef AVALUE *fv2
+        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *configuration = &system._configuration[0]
+        cdef AVALUE *forces = &system._forces[0]
 
         r = _euclidean_distance(
-            &res.rv[0],
-            &configuration[p1 * support.dim_per_atom],
-            &configuration[p2 * support.dim_per_atom],
-            support.dim_per_atom
+            &system._resources.rv[0],
+            &configuration[p1 * dim_per_atom],
+            &configuration[p2 * dim_per_atom],
+            dim_per_atom
             )
 
-        fv1 = &forces[p1 * support.dim_per_atom]
-        fv2 = &forces[p2 * support.dim_per_atom]
+        fv1 = &forces[p1 * dim_per_atom]
+        fv2 = &forces[p2 * dim_per_atom]
 
         f = 24 * e * (2 * cpow(s, 12) / cpow(r, 13) - cpow(s, 6) / cpow(r, 7))
-        for i in range(support.dim_per_atom):
-            _f = f * res.rv[i] / r
+        for i in range(dim_per_atom):
+            _f = f * system._resources.rv[i] / r
             fv1[i] += _f
             fv2[i] -= _f
 
     cdef AVALUE _get_energy_by_index(
             self,
             AINDEX index,
-            AVALUE *configuration,
-            system_support support,
-            resources res) nogil:
+            System system) nogil:
 
         cdef AVALUE r
         cdef AINDEX p1 = self._indices[index * self._dindex]
         cdef AINDEX p2 = self._indices[index * self._dindex + 1]
         cdef AVALUE e = self._parameters[index * self._dparam]
         cdef AVALUE s = self._parameters[index * self._dparam + 1]
+        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *configuration = &system._configuration[0]
 
         r = _euclidean_distance(
-            &res.rv[0],
-            &configuration[p1 * support.dim_per_atom],
-            &configuration[p2 * support.dim_per_atom],
-            support.dim_per_atom
+            &system._resources.rv[0],
+            &configuration[p1 * dim_per_atom],
+            &configuration[p2 * dim_per_atom],
+            dim_per_atom
             )
 
         return 4 * e * (cpow(s / r, 12) - cpow(s / r, 6))

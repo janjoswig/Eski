@@ -1,11 +1,11 @@
 cimport numpy as np
 
+from libc.stdlib cimport malloc, free
+from libc.math cimport sqrt as csqrt, pow as cpow
+
 from eski.primitive_types cimport AINDEX, AVALUE, ABOOL
-from eski.atoms cimport system_support
-
-
-ctypedef struct resources:
-    AVALUE *rv
+from eski.md cimport System
+from eski.metrics cimport _euclidean_distance
 
 
 cdef class Interaction:
@@ -21,39 +21,37 @@ cdef class Interaction:
         AINDEX _dindex, _dparam
         AINDEX _n_indices, _n_parameters
 
-    cpdef void add_all_forces(
-        self,  AVALUE[::1] configuration,  AVALUE[::1] forces,
-        system_support support)
-
     cdef void _add_all_forces(
-        self,  AVALUE *configuration, AVALUE *forces,
-        system_support support, resources res) nogil
+        self,  System system) nogil
 
     cdef void _add_force_by_index(
             self,
             AINDEX index,
-            AVALUE *configuration,
-            AVALUE *forces,
-            system_support support,
-            resources res) nogil
-
-    cpdef AVALUE get_total_energy(
-        self,  AVALUE[::1] configuration,
-        system_support support)
+            System system) nogil
 
     cdef AVALUE _get_total_energy(
-        self,  AVALUE *configuration,
-        system_support support, resources res) nogil
+        self,  System system) nogil
 
     cdef AVALUE _get_energy_by_index(
             self,
             AINDEX index,
-            AVALUE *configuration,
-            system_support support,
-            resources res) nogil
+            System system) nogil
+
+    cpdef void add_all_forces(
+            self, System system)
+
+    cpdef void add_force_by_index(
+            self,
+            AINDEX index,
+            System system)
+
+    cpdef AVALUE get_total_energy(
+        self,  System system)
+
+    cpdef AVALUE get_energy_by_index(
+            self,
+            AINDEX index,
+            System system)
 
     cpdef void _check_index_param_consistency(self) except *
     cpdef void _check_interaction_index(self, AINDEX index) except *
-
-
-cdef resources allocate_resources(system_support support) except *

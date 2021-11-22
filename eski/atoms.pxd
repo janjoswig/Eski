@@ -1,16 +1,10 @@
 from eski.primitive_types cimport AINDEX, AVALUE, ABOOL
 
 
-ctypedef struct internal_atom:
+ctypedef struct InternalAtom:
     AINDEX atype_id
     AVALUE mass
     AVALUE charge
-
-
-ctypedef struct system_support:
-    AINDEX n_atoms
-    AINDEX n_dim
-    AINDEX dim_per_atom
 
 
 cdef class Atom:
@@ -27,4 +21,4 @@ cdef class Atom:
         AVALUE charge
 
 
-cdef void make_internal_atoms(list atoms, internal_atom *_atoms)
+cdef void make_internal_atoms(list atoms, InternalAtom *_atoms)

@@ -1,5 +1,15 @@
+cimport numpy as np
+
+from libc.stdlib cimport malloc, free
+from libc.math cimport sqrt as csqrt, pow as cpow, log as clog
+
+
 from eski.primitive_types cimport AINDEX, AVALUE
-from eski.atoms cimport internal_atom, system_support
+from eski.atoms cimport InternalAtom, make_internal_atoms
+from eski.md cimport System
+from eski.metrics cimport _random_gaussian
+from eski.interactions cimport Interaction
+
 
 cdef class Driver:
     cdef:
@@ -7,18 +17,4 @@ cdef class Driver:
         AINDEX _dparam
         AINDEX _n_parameters
 
-    cpdef void update(
-            self,
-            AVALUE[::1] configuration,
-            AVALUE[::1] velocities,
-            AVALUE[::1] forces,
-            list atoms,
-            system_support support)
-
-    cdef void _update(
-            self,
-            AVALUE *configuration,
-            AVALUE *velocities,
-            AVALUE *forces,
-            internal_atom *atoms,
-            system_support support) nogil
+    cdef void _update(self, System system)

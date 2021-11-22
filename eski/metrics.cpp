@@ -2418,11 +2418,11 @@ static PyTypeObject *__pyx_ptype_5numpy_flexible = 0;
 static PyTypeObject *__pyx_ptype_5numpy_character = 0;
 static PyTypeObject *__pyx_ptype_5numpy_ufunc = 0;
 
-/* Module declarations from 'eski.primitive_types' */
-
 /* Module declarations from 'libc.stdlib' */
 
 /* Module declarations from 'libc.math' */
+
+/* Module declarations from 'eski.primitive_types' */
 
 /* Module declarations from 'eski.metrics' */
 static PyTypeObject *__pyx_array_type = 0;
@@ -2785,7 +2785,7 @@ static PyObject *__pyx_codeobj__3;
 static PyObject *__pyx_codeobj__24;
 /* Late includes */
 
-/* "eski/metrics.pyx":9
+/* "eski/metrics.pyx":6
  * 
  * 
  * cdef inline double _random_uniform() nogil:             # <<<<<<<<<<<<<<
@@ -2800,30 +2800,30 @@ static CYTHON_INLINE double __pyx_f_4eski_7metrics__random_uniform(void) {
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_TraceCall("_random_uniform", __pyx_f[0], 9, 1, __PYX_ERR(0, 9, __pyx_L1_error));
+  __Pyx_TraceCall("_random_uniform", __pyx_f[0], 6, 1, __PYX_ERR(0, 6, __pyx_L1_error));
 
-  /* "eski/metrics.pyx":10
+  /* "eski/metrics.pyx":7
  * 
  * cdef inline double _random_uniform() nogil:
  *     cdef double r = rand()             # <<<<<<<<<<<<<<
  *     return r / RAND_MAX
  * 
  */
-  __Pyx_TraceLine(10,1,__PYX_ERR(0, 10, __pyx_L1_error))
+  __Pyx_TraceLine(7,1,__PYX_ERR(0, 7, __pyx_L1_error))
   __pyx_v_r = rand();
 
-  /* "eski/metrics.pyx":11
+  /* "eski/metrics.pyx":8
  * cdef inline double _random_uniform() nogil:
  *     cdef double r = rand()
  *     return r / RAND_MAX             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __Pyx_TraceLine(11,1,__PYX_ERR(0, 11, __pyx_L1_error))
+  __Pyx_TraceLine(8,1,__PYX_ERR(0, 8, __pyx_L1_error))
   __pyx_r = (__pyx_v_r / ((double)RAND_MAX));
   goto __pyx_L0;
 
-  /* "eski/metrics.pyx":9
+  /* "eski/metrics.pyx":6
  * 
  * 
  * cdef inline double _random_uniform() nogil:             # <<<<<<<<<<<<<<
@@ -2840,7 +2840,7 @@ static CYTHON_INLINE double __pyx_f_4eski_7metrics__random_uniform(void) {
   return __pyx_r;
 }
 
-/* "eski/metrics.pyx":14
+/* "eski/metrics.pyx":11
  * 
  * 
  * def random_uniform():             # <<<<<<<<<<<<<<
@@ -2873,24 +2873,24 @@ static PyObject *__pyx_pf_4eski_7metrics_random_uniform(CYTHON_UNUSED PyObject *
   int __pyx_clineno = 0;
   __Pyx_TraceFrameInit(__pyx_codeobj_)
   __Pyx_RefNannySetupContext("random_uniform", 0);
-  __Pyx_TraceCall("random_uniform", __pyx_f[0], 14, 0, __PYX_ERR(0, 14, __pyx_L1_error));
+  __Pyx_TraceCall("random_uniform", __pyx_f[0], 11, 0, __PYX_ERR(0, 11, __pyx_L1_error));
 
-  /* "eski/metrics.pyx":15
+  /* "eski/metrics.pyx":12
  * 
  * def random_uniform():
  *     return _random_uniform()             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __Pyx_TraceLine(15,0,__PYX_ERR(0, 15, __pyx_L1_error))
+  __Pyx_TraceLine(12,0,__PYX_ERR(0, 12, __pyx_L1_error))
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_f_4eski_7metrics__random_uniform()); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 15, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_f_4eski_7metrics__random_uniform()); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 12, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "eski/metrics.pyx":14
+  /* "eski/metrics.pyx":11
  * 
  * 
  * def random_uniform():             # <<<<<<<<<<<<<<
@@ -2910,7 +2910,7 @@ static PyObject *__pyx_pf_4eski_7metrics_random_uniform(CYTHON_UNUSED PyObject *
   return __pyx_r;
 }
 
-/* "eski/metrics.pyx":18
+/* "eski/metrics.pyx":15
  * 
  * 
  * cdef inline double _random_gaussian() nogil:             # <<<<<<<<<<<<<<
@@ -2928,83 +2928,83 @@ static CYTHON_INLINE double __pyx_f_4eski_7metrics__random_gaussian(void) {
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_TraceCall("_random_gaussian", __pyx_f[0], 18, 1, __PYX_ERR(0, 18, __pyx_L1_error));
+  __Pyx_TraceCall("_random_gaussian", __pyx_f[0], 15, 1, __PYX_ERR(0, 15, __pyx_L1_error));
 
-  /* "eski/metrics.pyx":21
+  /* "eski/metrics.pyx":18
  *     cdef double x1, x2, w
  * 
  *     w = 2.0             # <<<<<<<<<<<<<<
  *     while (w >= 1.0):
  *         x1 = 2.0 * _random_uniform() - 1.0
  */
-  __Pyx_TraceLine(21,1,__PYX_ERR(0, 21, __pyx_L1_error))
+  __Pyx_TraceLine(18,1,__PYX_ERR(0, 18, __pyx_L1_error))
   __pyx_v_w = 2.0;
 
-  /* "eski/metrics.pyx":22
+  /* "eski/metrics.pyx":19
  * 
  *     w = 2.0
  *     while (w >= 1.0):             # <<<<<<<<<<<<<<
  *         x1 = 2.0 * _random_uniform() - 1.0
  *         x2 = 2.0 * _random_uniform() - 1.0
  */
-  __Pyx_TraceLine(22,1,__PYX_ERR(0, 22, __pyx_L1_error))
+  __Pyx_TraceLine(19,1,__PYX_ERR(0, 19, __pyx_L1_error))
   while (1) {
     __pyx_t_1 = ((__pyx_v_w >= 1.0) != 0);
     if (!__pyx_t_1) break;
 
-    /* "eski/metrics.pyx":23
+    /* "eski/metrics.pyx":20
  *     w = 2.0
  *     while (w >= 1.0):
  *         x1 = 2.0 * _random_uniform() - 1.0             # <<<<<<<<<<<<<<
  *         x2 = 2.0 * _random_uniform() - 1.0
  *         w = x1 * x1 + x2 * x2
  */
-    __Pyx_TraceLine(23,1,__PYX_ERR(0, 23, __pyx_L1_error))
+    __Pyx_TraceLine(20,1,__PYX_ERR(0, 20, __pyx_L1_error))
     __pyx_v_x1 = ((2.0 * __pyx_f_4eski_7metrics__random_uniform()) - 1.0);
 
-    /* "eski/metrics.pyx":24
+    /* "eski/metrics.pyx":21
  *     while (w >= 1.0):
  *         x1 = 2.0 * _random_uniform() - 1.0
  *         x2 = 2.0 * _random_uniform() - 1.0             # <<<<<<<<<<<<<<
  *         w = x1 * x1 + x2 * x2
  * 
  */
-    __Pyx_TraceLine(24,1,__PYX_ERR(0, 24, __pyx_L1_error))
+    __Pyx_TraceLine(21,1,__PYX_ERR(0, 21, __pyx_L1_error))
     __pyx_v_x2 = ((2.0 * __pyx_f_4eski_7metrics__random_uniform()) - 1.0);
 
-    /* "eski/metrics.pyx":25
+    /* "eski/metrics.pyx":22
  *         x1 = 2.0 * _random_uniform() - 1.0
  *         x2 = 2.0 * _random_uniform() - 1.0
  *         w = x1 * x1 + x2 * x2             # <<<<<<<<<<<<<<
  * 
  *     w = ((-2.0 * clog(w)) / w) ** 0.5
  */
-    __Pyx_TraceLine(25,1,__PYX_ERR(0, 25, __pyx_L1_error))
+    __Pyx_TraceLine(22,1,__PYX_ERR(0, 22, __pyx_L1_error))
     __pyx_v_w = ((__pyx_v_x1 * __pyx_v_x1) + (__pyx_v_x2 * __pyx_v_x2));
   }
 
-  /* "eski/metrics.pyx":27
+  /* "eski/metrics.pyx":24
  *         w = x1 * x1 + x2 * x2
  * 
  *     w = ((-2.0 * clog(w)) / w) ** 0.5             # <<<<<<<<<<<<<<
  *     return x1 * w
  * 
  */
-  __Pyx_TraceLine(27,1,__PYX_ERR(0, 27, __pyx_L1_error))
+  __Pyx_TraceLine(24,1,__PYX_ERR(0, 24, __pyx_L1_error))
   __pyx_v_w = pow(((-2.0 * log(__pyx_v_w)) / __pyx_v_w), 0.5);
 
-  /* "eski/metrics.pyx":28
+  /* "eski/metrics.pyx":25
  * 
  *     w = ((-2.0 * clog(w)) / w) ** 0.5
  *     return x1 * w             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __Pyx_TraceLine(28,1,__PYX_ERR(0, 28, __pyx_L1_error))
+  __Pyx_TraceLine(25,1,__PYX_ERR(0, 25, __pyx_L1_error))
   __pyx_r = (__pyx_v_x1 * __pyx_v_w);
   goto __pyx_L0;
 
-  /* "eski/metrics.pyx":18
+  /* "eski/metrics.pyx":15
  * 
  * 
  * cdef inline double _random_gaussian() nogil:             # <<<<<<<<<<<<<<
@@ -3021,7 +3021,7 @@ static CYTHON_INLINE double __pyx_f_4eski_7metrics__random_gaussian(void) {
   return __pyx_r;
 }
 
-/* "eski/metrics.pyx":31
+/* "eski/metrics.pyx":28
  * 
  * 
  * def random_gaussian():             # <<<<<<<<<<<<<<
@@ -3054,24 +3054,24 @@ static PyObject *__pyx_pf_4eski_7metrics_2random_gaussian(CYTHON_UNUSED PyObject
   int __pyx_clineno = 0;
   __Pyx_TraceFrameInit(__pyx_codeobj__2)
   __Pyx_RefNannySetupContext("random_gaussian", 0);
-  __Pyx_TraceCall("random_gaussian", __pyx_f[0], 31, 0, __PYX_ERR(0, 31, __pyx_L1_error));
+  __Pyx_TraceCall("random_gaussian", __pyx_f[0], 28, 0, __PYX_ERR(0, 28, __pyx_L1_error));
 
-  /* "eski/metrics.pyx":32
+  /* "eski/metrics.pyx":29
  * 
  * def random_gaussian():
  *     return _random_gaussian()             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __Pyx_TraceLine(32,0,__PYX_ERR(0, 32, __pyx_L1_error))
+  __Pyx_TraceLine(29,0,__PYX_ERR(0, 29, __pyx_L1_error))
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_f_4eski_7metrics__random_gaussian()); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 32, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_f_4eski_7metrics__random_gaussian()); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 29, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "eski/metrics.pyx":31
+  /* "eski/metrics.pyx":28
  * 
  * 
  * def random_gaussian():             # <<<<<<<<<<<<<<
@@ -3091,7 +3091,7 @@ static PyObject *__pyx_pf_4eski_7metrics_2random_gaussian(CYTHON_UNUSED PyObject
   return __pyx_r;
 }
 
-/* "eski/metrics.pyx":35
+/* "eski/metrics.pyx":32
  * 
  * 
  * cdef inline AVALUE _euclidean_distance(             # <<<<<<<<<<<<<<
@@ -3110,64 +3110,64 @@ static CYTHON_INLINE __pyx_t_4eski_15primitive_types_AVALUE __pyx_f_4eski_7metri
   int __pyx_lineno = 0;
   const char *__pyx_filename = NULL;
   int __pyx_clineno = 0;
-  __Pyx_TraceCall("_euclidean_distance", __pyx_f[0], 35, 1, __PYX_ERR(0, 35, __pyx_L1_error));
+  __Pyx_TraceCall("_euclidean_distance", __pyx_f[0], 32, 1, __PYX_ERR(0, 32, __pyx_L1_error));
 
-  /* "eski/metrics.pyx":49
+  /* "eski/metrics.pyx":46
  * 
  *     cdef AINDEX i
  *     cdef AVALUE r = 0             # <<<<<<<<<<<<<<
  * 
  *     for i in range(d):
  */
-  __Pyx_TraceLine(49,1,__PYX_ERR(0, 49, __pyx_L1_error))
+  __Pyx_TraceLine(46,1,__PYX_ERR(0, 46, __pyx_L1_error))
   __pyx_v_r = 0.0;
 
-  /* "eski/metrics.pyx":51
+  /* "eski/metrics.pyx":48
  *     cdef AVALUE r = 0
  * 
  *     for i in range(d):             # <<<<<<<<<<<<<<
  *         rvptr[i] = p1ptr[i] - p2ptr[i]
  *         r += cpow(rvptr[i], 2)
  */
-  __Pyx_TraceLine(51,1,__PYX_ERR(0, 51, __pyx_L1_error))
+  __Pyx_TraceLine(48,1,__PYX_ERR(0, 48, __pyx_L1_error))
   __pyx_t_1 = __pyx_v_d;
   __pyx_t_2 = __pyx_t_1;
   for (__pyx_t_3 = 0; __pyx_t_3 < __pyx_t_2; __pyx_t_3+=1) {
     __pyx_v_i = __pyx_t_3;
 
-    /* "eski/metrics.pyx":52
+    /* "eski/metrics.pyx":49
  * 
  *     for i in range(d):
  *         rvptr[i] = p1ptr[i] - p2ptr[i]             # <<<<<<<<<<<<<<
  *         r += cpow(rvptr[i], 2)
  * 
  */
-    __Pyx_TraceLine(52,1,__PYX_ERR(0, 52, __pyx_L1_error))
+    __Pyx_TraceLine(49,1,__PYX_ERR(0, 49, __pyx_L1_error))
     (__pyx_v_rvptr[__pyx_v_i]) = ((__pyx_v_p1ptr[__pyx_v_i]) - (__pyx_v_p2ptr[__pyx_v_i]));
 
-    /* "eski/metrics.pyx":53
+    /* "eski/metrics.pyx":50
  *     for i in range(d):
  *         rvptr[i] = p1ptr[i] - p2ptr[i]
  *         r += cpow(rvptr[i], 2)             # <<<<<<<<<<<<<<
  * 
  *     return csqrt(r)
  */
-    __Pyx_TraceLine(53,1,__PYX_ERR(0, 53, __pyx_L1_error))
+    __Pyx_TraceLine(50,1,__PYX_ERR(0, 50, __pyx_L1_error))
     __pyx_v_r = (__pyx_v_r + pow((__pyx_v_rvptr[__pyx_v_i]), 2.0));
   }
 
-  /* "eski/metrics.pyx":55
+  /* "eski/metrics.pyx":52
  *         r += cpow(rvptr[i], 2)
  * 
  *     return csqrt(r)             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __Pyx_TraceLine(55,1,__PYX_ERR(0, 55, __pyx_L1_error))
+  __Pyx_TraceLine(52,1,__PYX_ERR(0, 52, __pyx_L1_error))
   __pyx_r = sqrt(__pyx_v_r);
   goto __pyx_L0;
 
-  /* "eski/metrics.pyx":35
+  /* "eski/metrics.pyx":32
  * 
  * 
  * cdef inline AVALUE _euclidean_distance(             # <<<<<<<<<<<<<<
@@ -3184,7 +3184,7 @@ static CYTHON_INLINE __pyx_t_4eski_15primitive_types_AVALUE __pyx_f_4eski_7metri
   return __pyx_r;
 }
 
-/* "eski/metrics.pyx":58
+/* "eski/metrics.pyx":55
  * 
  * 
  * def euclidean_distance(p1, p2):             # <<<<<<<<<<<<<<
@@ -3228,11 +3228,11 @@ static PyObject *__pyx_pw_4eski_7metrics_5euclidean_distance(PyObject *__pyx_sel
         case  1:
         if (likely((values[1] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_p2)) != 0)) kw_args--;
         else {
-          __Pyx_RaiseArgtupleInvalid("euclidean_distance", 1, 2, 2, 1); __PYX_ERR(0, 58, __pyx_L3_error)
+          __Pyx_RaiseArgtupleInvalid("euclidean_distance", 1, 2, 2, 1); __PYX_ERR(0, 55, __pyx_L3_error)
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "euclidean_distance") < 0)) __PYX_ERR(0, 58, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "euclidean_distance") < 0)) __PYX_ERR(0, 55, __pyx_L3_error)
       }
     } else if (PyTuple_GET_SIZE(__pyx_args) != 2) {
       goto __pyx_L5_argtuple_error;
@@ -3245,7 +3245,7 @@ static PyObject *__pyx_pw_4eski_7metrics_5euclidean_distance(PyObject *__pyx_sel
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("euclidean_distance", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 58, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("euclidean_distance", 1, 2, 2, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(0, 55, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("eski.metrics.euclidean_distance", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
@@ -3279,98 +3279,98 @@ static PyObject *__pyx_pf_4eski_7metrics_4euclidean_distance(CYTHON_UNUSED PyObj
   int __pyx_clineno = 0;
   __Pyx_TraceFrameInit(__pyx_codeobj__3)
   __Pyx_RefNannySetupContext("euclidean_distance", 0);
-  __Pyx_TraceCall("euclidean_distance", __pyx_f[0], 58, 0, __PYX_ERR(0, 58, __pyx_L1_error));
+  __Pyx_TraceCall("euclidean_distance", __pyx_f[0], 55, 0, __PYX_ERR(0, 55, __pyx_L1_error));
 
-  /* "eski/metrics.pyx":69
+  /* "eski/metrics.pyx":66
  *     """
  * 
  *     cdef AVALUE[::1] p1view = p1             # <<<<<<<<<<<<<<
  *     cdef AVALUE[::1] p2view = p2
  *     cdef AVALUE[::1] rv = np.zeros(p1.shape[0], dtype=P_AVALUE)
  */
-  __Pyx_TraceLine(69,0,__PYX_ERR(0, 69, __pyx_L1_error))
-  __pyx_t_1 = __Pyx_PyObject_to_MemoryviewSlice_dc_nn___pyx_t_4eski_15primitive_types_AVALUE(__pyx_v_p1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_1.memview)) __PYX_ERR(0, 69, __pyx_L1_error)
+  __Pyx_TraceLine(66,0,__PYX_ERR(0, 66, __pyx_L1_error))
+  __pyx_t_1 = __Pyx_PyObject_to_MemoryviewSlice_dc_nn___pyx_t_4eski_15primitive_types_AVALUE(__pyx_v_p1, PyBUF_WRITABLE); if (unlikely(!__pyx_t_1.memview)) __PYX_ERR(0, 66, __pyx_L1_error)
   __pyx_v_p1view = __pyx_t_1;
   __pyx_t_1.memview = NULL;
   __pyx_t_1.data = NULL;
 
-  /* "eski/metrics.pyx":70
+  /* "eski/metrics.pyx":67
  * 
  *     cdef AVALUE[::1] p1view = p1
  *     cdef AVALUE[::1] p2view = p2             # <<<<<<<<<<<<<<
  *     cdef AVALUE[::1] rv = np.zeros(p1.shape[0], dtype=P_AVALUE)
  * 
  */
-  __Pyx_TraceLine(70,0,__PYX_ERR(0, 70, __pyx_L1_error))
-  __pyx_t_1 = __Pyx_PyObject_to_MemoryviewSlice_dc_nn___pyx_t_4eski_15primitive_types_AVALUE(__pyx_v_p2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_1.memview)) __PYX_ERR(0, 70, __pyx_L1_error)
+  __Pyx_TraceLine(67,0,__PYX_ERR(0, 67, __pyx_L1_error))
+  __pyx_t_1 = __Pyx_PyObject_to_MemoryviewSlice_dc_nn___pyx_t_4eski_15primitive_types_AVALUE(__pyx_v_p2, PyBUF_WRITABLE); if (unlikely(!__pyx_t_1.memview)) __PYX_ERR(0, 67, __pyx_L1_error)
   __pyx_v_p2view = __pyx_t_1;
   __pyx_t_1.memview = NULL;
   __pyx_t_1.data = NULL;
 
-  /* "eski/metrics.pyx":71
+  /* "eski/metrics.pyx":68
  *     cdef AVALUE[::1] p1view = p1
  *     cdef AVALUE[::1] p2view = p2
  *     cdef AVALUE[::1] rv = np.zeros(p1.shape[0], dtype=P_AVALUE)             # <<<<<<<<<<<<<<
  * 
  *     return _euclidean_distance(&rv[0], &p1view[0], &p2view[0], p1.shape[0])
  */
-  __Pyx_TraceLine(71,0,__PYX_ERR(0, 71, __pyx_L1_error))
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __Pyx_TraceLine(68,0,__PYX_ERR(0, 68, __pyx_L1_error))
+  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_zeros); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_zeros); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_3);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_p1, __pyx_n_s_shape); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_v_p1, __pyx_n_s_shape); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_2, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_2, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_2 = PyTuple_New(1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_GIVEREF(__pyx_t_4);
   PyTuple_SET_ITEM(__pyx_t_2, 0, __pyx_t_4);
   __pyx_t_4 = 0;
-  __pyx_t_4 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
-  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_P_AVALUE); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_n_s_P_AVALUE); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_dtype, __pyx_t_5) < 0) __PYX_ERR(0, 71, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_t_4, __pyx_n_s_dtype, __pyx_t_5) < 0) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_2, __pyx_t_4); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_3, __pyx_t_2, __pyx_t_4); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_1 = __Pyx_PyObject_to_MemoryviewSlice_dc_nn___pyx_t_4eski_15primitive_types_AVALUE(__pyx_t_5, PyBUF_WRITABLE); if (unlikely(!__pyx_t_1.memview)) __PYX_ERR(0, 71, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_to_MemoryviewSlice_dc_nn___pyx_t_4eski_15primitive_types_AVALUE(__pyx_t_5, PyBUF_WRITABLE); if (unlikely(!__pyx_t_1.memview)) __PYX_ERR(0, 68, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
   __pyx_v_rv = __pyx_t_1;
   __pyx_t_1.memview = NULL;
   __pyx_t_1.data = NULL;
 
-  /* "eski/metrics.pyx":73
+  /* "eski/metrics.pyx":70
  *     cdef AVALUE[::1] rv = np.zeros(p1.shape[0], dtype=P_AVALUE)
  * 
  *     return _euclidean_distance(&rv[0], &p1view[0], &p2view[0], p1.shape[0])             # <<<<<<<<<<<<<<
  */
-  __Pyx_TraceLine(73,0,__PYX_ERR(0, 73, __pyx_L1_error))
+  __Pyx_TraceLine(70,0,__PYX_ERR(0, 70, __pyx_L1_error))
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_6 = 0;
   __pyx_t_7 = 0;
   __pyx_t_8 = 0;
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_p1, __pyx_n_s_shape); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_p1, __pyx_n_s_shape); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 70, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_5, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_4 = __Pyx_GetItemInt(__pyx_t_5, 0, long, 1, __Pyx_PyInt_From_long, 0, 0, 0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 70, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_9 = __Pyx_PyInt_As_Py_intptr_t(__pyx_t_4); if (unlikely((__pyx_t_9 == ((npy_intp)-1)) && PyErr_Occurred())) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_9 = __Pyx_PyInt_As_Py_intptr_t(__pyx_t_4); if (unlikely((__pyx_t_9 == ((npy_intp)-1)) && PyErr_Occurred())) __PYX_ERR(0, 70, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __pyx_t_4 = PyFloat_FromDouble(__pyx_f_4eski_7metrics__euclidean_distance((&(*((__pyx_t_4eski_15primitive_types_AVALUE *) ( /* dim=0 */ ((char *) (((__pyx_t_4eski_15primitive_types_AVALUE *) __pyx_v_rv.data) + __pyx_t_6)) )))), (&(*((__pyx_t_4eski_15primitive_types_AVALUE *) ( /* dim=0 */ ((char *) (((__pyx_t_4eski_15primitive_types_AVALUE *) __pyx_v_p1view.data) + __pyx_t_7)) )))), (&(*((__pyx_t_4eski_15primitive_types_AVALUE *) ( /* dim=0 */ ((char *) (((__pyx_t_4eski_15primitive_types_AVALUE *) __pyx_v_p2view.data) + __pyx_t_8)) )))), __pyx_t_9)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 73, __pyx_L1_error)
+  __pyx_t_4 = PyFloat_FromDouble(__pyx_f_4eski_7metrics__euclidean_distance((&(*((__pyx_t_4eski_15primitive_types_AVALUE *) ( /* dim=0 */ ((char *) (((__pyx_t_4eski_15primitive_types_AVALUE *) __pyx_v_rv.data) + __pyx_t_6)) )))), (&(*((__pyx_t_4eski_15primitive_types_AVALUE *) ( /* dim=0 */ ((char *) (((__pyx_t_4eski_15primitive_types_AVALUE *) __pyx_v_p1view.data) + __pyx_t_7)) )))), (&(*((__pyx_t_4eski_15primitive_types_AVALUE *) ( /* dim=0 */ ((char *) (((__pyx_t_4eski_15primitive_types_AVALUE *) __pyx_v_p2view.data) + __pyx_t_8)) )))), __pyx_t_9)); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 70, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
   __pyx_r = __pyx_t_4;
   __pyx_t_4 = 0;
   goto __pyx_L0;
 
-  /* "eski/metrics.pyx":58
+  /* "eski/metrics.pyx":55
  * 
  * 
  * def euclidean_distance(p1, p2):             # <<<<<<<<<<<<<<
@@ -19435,7 +19435,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {0, 0, 0, 0, 0, 0, 0}
 };
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 51, __pyx_L1_error)
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(0, 48, __pyx_L1_error)
   __pyx_builtin_ImportError = __Pyx_GetBuiltinName(__pyx_n_s_ImportError); if (!__pyx_builtin_ImportError) __PYX_ERR(1, 945, __pyx_L1_error)
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(2, 133, __pyx_L1_error)
   __pyx_builtin_MemoryError = __Pyx_GetBuiltinName(__pyx_n_s_MemoryError); if (!__pyx_builtin_MemoryError) __PYX_ERR(2, 148, __pyx_L1_error)
@@ -19667,35 +19667,35 @@ static CYTHON_SMALL_CODE int __Pyx_InitCachedConstants(void) {
   __Pyx_GOTREF(__pyx_tuple__23);
   __Pyx_GIVEREF(__pyx_tuple__23);
 
-  /* "eski/metrics.pyx":14
+  /* "eski/metrics.pyx":11
  * 
  * 
  * def random_uniform():             # <<<<<<<<<<<<<<
  *     return _random_uniform()
  * 
  */
-  __pyx_codeobj_ = (PyObject*)__Pyx_PyCode_New(0, 0, 0, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_eski_metrics_pyx, __pyx_n_s_random_uniform, 14, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj_)) __PYX_ERR(0, 14, __pyx_L1_error)
+  __pyx_codeobj_ = (PyObject*)__Pyx_PyCode_New(0, 0, 0, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_eski_metrics_pyx, __pyx_n_s_random_uniform, 11, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj_)) __PYX_ERR(0, 11, __pyx_L1_error)
 
-  /* "eski/metrics.pyx":31
+  /* "eski/metrics.pyx":28
  * 
  * 
  * def random_gaussian():             # <<<<<<<<<<<<<<
  *     return _random_gaussian()
  * 
  */
-  __pyx_codeobj__2 = (PyObject*)__Pyx_PyCode_New(0, 0, 0, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_eski_metrics_pyx, __pyx_n_s_random_gaussian, 31, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__2)) __PYX_ERR(0, 31, __pyx_L1_error)
+  __pyx_codeobj__2 = (PyObject*)__Pyx_PyCode_New(0, 0, 0, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_eski_metrics_pyx, __pyx_n_s_random_gaussian, 28, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__2)) __PYX_ERR(0, 28, __pyx_L1_error)
 
-  /* "eski/metrics.pyx":58
+  /* "eski/metrics.pyx":55
  * 
  * 
  * def euclidean_distance(p1, p2):             # <<<<<<<<<<<<<<
  *     """Calculate euclidean distance in 3D
  * 
  */
-  __pyx_tuple__25 = PyTuple_Pack(5, __pyx_n_s_p1, __pyx_n_s_p2, __pyx_n_s_p1view, __pyx_n_s_p2view, __pyx_n_s_rv); if (unlikely(!__pyx_tuple__25)) __PYX_ERR(0, 58, __pyx_L1_error)
+  __pyx_tuple__25 = PyTuple_Pack(5, __pyx_n_s_p1, __pyx_n_s_p2, __pyx_n_s_p1view, __pyx_n_s_p2view, __pyx_n_s_rv); if (unlikely(!__pyx_tuple__25)) __PYX_ERR(0, 55, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__25);
   __Pyx_GIVEREF(__pyx_tuple__25);
-  __pyx_codeobj__3 = (PyObject*)__Pyx_PyCode_New(2, 0, 5, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__25, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_eski_metrics_pyx, __pyx_n_s_euclidean_distance, 58, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__3)) __PYX_ERR(0, 58, __pyx_L1_error)
+  __pyx_codeobj__3 = (PyObject*)__Pyx_PyCode_New(2, 0, 5, 0, CO_OPTIMIZED|CO_NEWLOCALS, __pyx_empty_bytes, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_tuple__25, __pyx_empty_tuple, __pyx_empty_tuple, __pyx_kp_s_eski_metrics_pyx, __pyx_n_s_euclidean_distance, 55, __pyx_empty_bytes); if (unlikely(!__pyx_codeobj__3)) __PYX_ERR(0, 55, __pyx_L1_error)
 
   /* "View.MemoryView":286
  *         return self.name
@@ -20172,8 +20172,8 @@ if (!__Pyx_RefNanny) {
 
   /* "eski/metrics.pyx":1
  * import numpy as np             # <<<<<<<<<<<<<<
- * cimport numpy as np
  * 
+ * from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
  */
   __Pyx_TraceLine(1,0,__PYX_ERR(0, 1, __pyx_L1_error))
   __pyx_t_1 = __Pyx_Import(__pyx_n_s_numpy, 0, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 1, __pyx_L1_error)
@@ -20181,15 +20181,15 @@ if (!__Pyx_RefNanny) {
   if (PyDict_SetItem(__pyx_d, __pyx_n_s_np, __pyx_t_1) < 0) __PYX_ERR(0, 1, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "eski/metrics.pyx":6
- * from libc.stdlib cimport rand, RAND_MAX
- * from libc.math cimport sqrt as csqrt, pow as cpow, log as clog
+  /* "eski/metrics.pyx":3
+ * import numpy as np
+ * 
  * from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __Pyx_TraceLine(6,0,__PYX_ERR(0, 6, __pyx_L1_error))
-  __pyx_t_1 = PyList_New(3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 6, __pyx_L1_error)
+  __Pyx_TraceLine(3,0,__PYX_ERR(0, 3, __pyx_L1_error))
+  __pyx_t_1 = PyList_New(3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_INCREF(__pyx_n_s_P_AINDEX);
   __Pyx_GIVEREF(__pyx_n_s_P_AINDEX);
@@ -20200,96 +20200,96 @@ if (!__Pyx_RefNanny) {
   __Pyx_INCREF(__pyx_n_s_P_ABOOL);
   __Pyx_GIVEREF(__pyx_n_s_P_ABOOL);
   PyList_SET_ITEM(__pyx_t_1, 2, __pyx_n_s_P_ABOOL);
-  __pyx_t_2 = __Pyx_Import(__pyx_n_s_eski_primitive_types, __pyx_t_1, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 6, __pyx_L1_error)
+  __pyx_t_2 = __Pyx_Import(__pyx_n_s_eski_primitive_types, __pyx_t_1, 0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_P_AINDEX); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 6, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_P_AINDEX); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_P_AINDEX, __pyx_t_1) < 0) __PYX_ERR(0, 6, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_P_AINDEX, __pyx_t_1) < 0) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_P_AVALUE); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 6, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_P_AVALUE); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_P_AVALUE, __pyx_t_1) < 0) __PYX_ERR(0, 6, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_P_AVALUE, __pyx_t_1) < 0) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_P_ABOOL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 6, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_ImportFrom(__pyx_t_2, __pyx_n_s_P_ABOOL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_P_ABOOL, __pyx_t_1) < 0) __PYX_ERR(0, 6, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_P_ABOOL, __pyx_t_1) < 0) __PYX_ERR(0, 3, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "eski/metrics.pyx":9
+  /* "eski/metrics.pyx":6
  * 
  * 
  * cdef inline double _random_uniform() nogil:             # <<<<<<<<<<<<<<
  *     cdef double r = rand()
  *     return r / RAND_MAX
  */
-  __Pyx_TraceLine(9,0,__PYX_ERR(0, 9, __pyx_L1_error))
+  __Pyx_TraceLine(6,0,__PYX_ERR(0, 6, __pyx_L1_error))
 
 
-  /* "eski/metrics.pyx":14
+  /* "eski/metrics.pyx":11
  * 
  * 
  * def random_uniform():             # <<<<<<<<<<<<<<
  *     return _random_uniform()
  * 
  */
-  __Pyx_TraceLine(14,0,__PYX_ERR(0, 14, __pyx_L1_error))
-  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_4eski_7metrics_1random_uniform, NULL, __pyx_n_s_eski_metrics); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 14, __pyx_L1_error)
+  __Pyx_TraceLine(11,0,__PYX_ERR(0, 11, __pyx_L1_error))
+  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_4eski_7metrics_1random_uniform, NULL, __pyx_n_s_eski_metrics); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 11, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_random_uniform, __pyx_t_2) < 0) __PYX_ERR(0, 14, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_random_uniform, __pyx_t_2) < 0) __PYX_ERR(0, 11, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "eski/metrics.pyx":18
+  /* "eski/metrics.pyx":15
  * 
  * 
  * cdef inline double _random_gaussian() nogil:             # <<<<<<<<<<<<<<
  *     cdef double x1, x2, w
  * 
  */
-  __Pyx_TraceLine(18,0,__PYX_ERR(0, 18, __pyx_L1_error))
+  __Pyx_TraceLine(15,0,__PYX_ERR(0, 15, __pyx_L1_error))
 
 
-  /* "eski/metrics.pyx":31
+  /* "eski/metrics.pyx":28
  * 
  * 
  * def random_gaussian():             # <<<<<<<<<<<<<<
  *     return _random_gaussian()
  * 
  */
-  __Pyx_TraceLine(31,0,__PYX_ERR(0, 31, __pyx_L1_error))
-  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_4eski_7metrics_3random_gaussian, NULL, __pyx_n_s_eski_metrics); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 31, __pyx_L1_error)
+  __Pyx_TraceLine(28,0,__PYX_ERR(0, 28, __pyx_L1_error))
+  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_4eski_7metrics_3random_gaussian, NULL, __pyx_n_s_eski_metrics); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 28, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_random_gaussian, __pyx_t_2) < 0) __PYX_ERR(0, 31, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_random_gaussian, __pyx_t_2) < 0) __PYX_ERR(0, 28, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "eski/metrics.pyx":35
+  /* "eski/metrics.pyx":32
  * 
  * 
  * cdef inline AVALUE _euclidean_distance(             # <<<<<<<<<<<<<<
  *         AVALUE *rvptr, AVALUE *p1ptr, AVALUE *p2ptr, AINDEX d) nogil:
  *     """Calculate euclidean distance in 3D
  */
-  __Pyx_TraceLine(35,0,__PYX_ERR(0, 35, __pyx_L1_error))
+  __Pyx_TraceLine(32,0,__PYX_ERR(0, 32, __pyx_L1_error))
 
 
-  /* "eski/metrics.pyx":58
+  /* "eski/metrics.pyx":55
  * 
  * 
  * def euclidean_distance(p1, p2):             # <<<<<<<<<<<<<<
  *     """Calculate euclidean distance in 3D
  * 
  */
-  __Pyx_TraceLine(58,0,__PYX_ERR(0, 58, __pyx_L1_error))
-  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_4eski_7metrics_5euclidean_distance, NULL, __pyx_n_s_eski_metrics); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 58, __pyx_L1_error)
+  __Pyx_TraceLine(55,0,__PYX_ERR(0, 55, __pyx_L1_error))
+  __pyx_t_2 = PyCFunction_NewEx(&__pyx_mdef_4eski_7metrics_5euclidean_distance, NULL, __pyx_n_s_eski_metrics); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 55, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
-  if (PyDict_SetItem(__pyx_d, __pyx_n_s_euclidean_distance, __pyx_t_2) < 0) __PYX_ERR(0, 58, __pyx_L1_error)
+  if (PyDict_SetItem(__pyx_d, __pyx_n_s_euclidean_distance, __pyx_t_2) < 0) __PYX_ERR(0, 55, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "eski/metrics.pyx":1
  * import numpy as np             # <<<<<<<<<<<<<<
- * cimport numpy as np
  * 
+ * from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
  */
   __Pyx_TraceLine(1,0,__PYX_ERR(0, 1, __pyx_L1_error))
   __pyx_t_2 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 1, __pyx_L1_error)

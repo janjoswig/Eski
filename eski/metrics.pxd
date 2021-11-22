@@ -1,5 +1,8 @@
 cimport numpy as np
 
+from libc.stdlib cimport rand, RAND_MAX
+from libc.math cimport sqrt as csqrt, pow as cpow, log as clog
+
 from eski.primitive_types cimport AINDEX, AVALUE
 
 

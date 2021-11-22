@@ -41,7 +41,7 @@ cdef class Atom:
         return f"{self.__class__.__name__}{attributes}"
 
 
-cdef void make_internal_atoms(list atoms, internal_atom *_atoms):
+cdef void make_internal_atoms(list atoms, InternalAtom *_atoms):
 
     cdef AINDEX index, atype_id = 0
     cdef dict atype_id_mapping = {}
@@ -52,7 +52,7 @@ cdef void make_internal_atoms(list atoms, internal_atom *_atoms):
             atype_id_mapping[atom.atype] = atype_id
             atype_id += 1
 
-        _atoms[index] = internal_atom(
+        _atoms[index] = InternalAtom(
             atype_id=atype_id_mapping[atom.atype],
             mass=atom.mass,
             charge=atom.charge

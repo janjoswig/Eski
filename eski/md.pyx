@@ -1,8 +1,7 @@
+import warnings
+
 cimport cython
 import numpy as np
-cimport numpy as np
-
-from libc.stdlib cimport malloc, free
 
 from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
 
@@ -56,12 +55,21 @@ cdef class System:
         n_dim = self._configuration.shape[0]
         assert n_dim  == n_atoms * dim_per_atom, "Number of dimensions does not match dimensions per atoms"
 
-        self._support = system_support(n_atoms, n_dim, dim_per_atom)
+        self._n_atoms = n_atoms
+        self._n_dim = n_dim
+        self._dim_per_atom = dim_per_atom
         self.allocate_atoms()
 
         if atoms is not None:
             assert len(atoms) == n_atoms
             make_internal_atoms(atoms, self._atoms)
+        else:
+            warnings.warn(
+                "No `atoms` provided. "
+                "Simulation features that require atom data "
+                "May not be available.",
+                RuntimeWarning
+                )
 
         if velocities is None:
             velocities = np.zeros_like(self._configuration)
@@ -120,6 +128,8 @@ cdef class System:
             desc = ""
         self.desc = desc
 
+        self.allocate_resources()
+
     def __dealloc__(self):
         if self._atoms != NULL:
             free(self._atoms)
@@ -137,23 +147,23 @@ cdef class System:
 
     @property
     def velocities(self):
-        return np.array(self._velocities, copy=True)
+        return np.asarray(self._velocities)
 
     @property
     def forces(self):
-        return np.array(self._forces, copy=True)
+        return np.asarray(self._forces)
 
     @property
     def n_atoms(self):
-        return self._support.n_atoms
+        return self._n_atoms
 
     @property
     def dim_per_atom(self):
-        return self._support.dim_per_atom
+        return self._dim_per_atom
 
     @property
     def bounds(self):
-        return np.array(self._bounds, copy=True)
+        return np.asarray(self._bounds)
 
     @property
     def step(self):
@@ -173,7 +183,7 @@ cdef class System:
         else:
             desc_str = f"{self.desc!r}, "
 
-        if self._support.n_atoms == 1:
+        if self._n_atoms == 1:
             atoms_str = "1 atom"
         else:
             atoms_str = f"{self.n_atoms} atoms"
@@ -183,19 +193,34 @@ cdef class System:
         return f"{self.__class__.__name__}({desc_str}{atoms_str}{dim_str})"
 
     cdef void allocate_atoms(self):
-        self._atoms = <internal_atom*>malloc(
-            self._support.n_atoms * sizeof(internal_atom)
+        self._atoms = <InternalAtom*>malloc(
+            self._n_atoms * sizeof(InternalAtom)
             )
 
         if self._atoms == NULL:
             raise MemoryError()
+
+    cdef void allocate_resources(self):
+
+        cdef Py_ssize_t i
+        cdef AVALUE *rv = <AVALUE*>malloc(
+            self._dim_per_atom * sizeof(AVALUE)
+            )
+
+        if rv == NULL:
+            raise MemoryError()
+
+        for i in range(self._dim_per_atom):
+            rv[i] = 0
+
+        self._resources = Resources(rv)
 
     cdef inline void reset_forces(self) nogil:
         """Reinitialise force vector"""
 
         cdef AINDEX i
 
-        for i in range(self._support.n_dim):
+        for i in range(self._n_dim):
             self._forces[i] = 0
 
     cpdef AVALUE potential_energy(self):
@@ -204,21 +229,28 @@ cdef class System:
         cdef Interaction interaction
         cdef object custom_interaction
 
-        cdef resources res = allocate_resources(self._support)
-
         cdef AVALUE energy = 0
 
         for interaction in self.interactions:
-            energy += interaction._get_total_energy(
-                &self._configuration[0],
-                self._support,
-                res
-                )
+            energy += interaction._get_total_energy(self)
 
         for custom_interaction in self.custom_interactions:
             energy += custom_interaction.get_total_energy(self)
 
         return energy
+
+    cpdef void add_all_forces(self):
+
+        cdef Interaction interaction
+        cdef object custom_interaction
+
+        self.reset_forces()
+
+        for interaction in self.interactions:
+            interaction._add_all_forces(self)
+
+        for custom_interaction in self.custom_interactions:
+            custom_interaction.add_all_forces(self)
 
     cpdef void simulate(self, Py_ssize_t n):
         """Perform a number of MD simulation steps"""
@@ -228,34 +260,13 @@ cdef class System:
         cdef Driver driver
         cdef Reporter reporter
 
-        cdef resources res = allocate_resources(self._support)
-
         self._step = 0
         self._target_step += n
 
         for self._step in range(1, n + 1):
 
-            self.reset_forces()
-
-            for interaction in self.interactions:
-                interaction._add_all_forces(
-                    &self._configuration[0],
-                    &self._forces[0],
-                    self._support,
-                    res
-                    )
-
-            for custom_interaction in self.custom_interactions:
-                custom_interaction.add_all_forces(self)
-
             for driver in self.drivers:
-                driver._update(
-                    &self._configuration[0],
-                    &self._velocities[0],
-                    &self._forces[0],
-                    &self._atoms[0],
-                    self._support
-                    )
+                driver._update(self)
 
             # self.apply_pbc
 
@@ -266,10 +277,6 @@ cdef class System:
             for reporter in self.reporters:
                 if cython.cmod(self._step, reporter.interval) == 0:
                     reporter.report(self)
-
-        # TODO: Deallocation function
-        if res.rv != NULL:
-            free(res.rv)
 
 
 cdef class Reporter:

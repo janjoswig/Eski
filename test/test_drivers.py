@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from eski import drivers, atoms
+from eski import atoms, drivers, md
 
 
 class TestDriver:
@@ -59,26 +59,15 @@ class TestDriver:
              [0, 0, -1]], order="c", dtype=float
             ).reshape(-1)
 
-        n_atoms = configuration.shape[0]
-        dim_per_atom = configuration.shape[1]
-        configuration = configuration.reshape(-1)
-        n_dim = configuration.shape[0]
-
-        support = {
-            "n_atoms": n_atoms,
-            "n_dim": n_dim,
-            "dim_per_atom": dim_per_atom,
-            }
-
-        driver.update(
+        system = md.System(
             configuration,
-            velocities,
-            forces,
-            [atoms.Atom(mass=1) for _ in range(n_atoms)],
-            support,
+            velocities=velocities,
+            atoms=[atoms.Atom(mass=1) for _ in range(configuration.shape[0])]
             )
 
+        driver.update(system)
+
         num_regression.check({
-            "configuration": configuration.flatten(),
-            "velocities": velocities.flatten(),
+            "configuration": system.configuration,
+            "velocities": system.velocities,
             })
