@@ -156,6 +156,10 @@ cdef class System:
     def target_step(self):
         return self._target_step
 
+    @property
+    def use_pbc(self):
+        return self._use_pbc
+
     def __repr__(self):
         if self.desc == "":
             desc_str = ""
