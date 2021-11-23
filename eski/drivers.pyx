@@ -110,7 +110,7 @@ cdef class EulerIntegrator(Driver):
         cdef AINDEX index, d, i
         cdef AVALUE dt = self._parameters[0]
 
-        cdef dim_per_atom = system._dim_per_atom
+        cdef AINDEX dim_per_atom = system._dim_per_atom
         cdef InternalAtom *atoms = system._atoms
         cdef AVALUE *configuration = &system._configuration[0]
         cdef AVALUE *velocities = &system._velocities[0]
@@ -118,19 +118,20 @@ cdef class EulerIntegrator(Driver):
 
         system.add_all_forces()
 
-        for index in prange(system._n_atoms):
-            for d in range(dim_per_atom):
-                i = index * dim_per_atom + d
-                configuration[i] = (
-                    configuration[i]
-                    + velocities[i] * dt
-                    + forces[i] * dt**2 / (2 * atoms[index].mass)
-                    )
-                velocities[i] = (
-                    velocities[i]
-                    + forces[i]
-                    * dt / atoms[index].mass
-                    )
+        with nogil:
+            for index in prange(system._n_atoms):
+                for d in range(dim_per_atom):
+                    i = index * dim_per_atom + d
+                    configuration[i] = (
+                        configuration[i]
+                        + velocities[i] * dt
+                        + forces[i] * dt**2 / (2 * atoms[index].mass)
+                        )
+                    velocities[i] = (
+                        velocities[i]
+                        + forces[i]
+                        * dt / atoms[index].mass
+                        )
 
 
 cdef class EulerMaruyamaIntegrator(Driver):
@@ -159,20 +160,21 @@ cdef class EulerMaruyamaIntegrator(Driver):
         cdef AVALUE T = self._parameters[2]
         cdef AVALUE sigma
 
-        cdef dim_per_atom = system._dim_per_atom
+        cdef AINDEX dim_per_atom = system._dim_per_atom
         cdef InternalAtom *atoms = system._atoms
         cdef AVALUE *configuration = &system._configuration[0]
         cdef AVALUE *forces = &system._forces[0]
 
         system.add_all_forces()
 
-        for index in prange(system._n_atoms):
-            sigma = csqrt(2 * 0.008314463 * T / atoms[index].mass / friction)
+        with nogil:
+            for index in prange(system._n_atoms):
+                sigma = csqrt(2 * 0.008314463 * T / atoms[index].mass / friction)
 
-            for d in range(dim_per_atom):
-                i = index * dim_per_atom + d
-                configuration[i] = (
-                    configuration[i]
-                    + forces[i] * dt / atoms[index].mass / friction
-                    + sigma * _random_gaussian() * sqrt_dt
-                    )
+                for d in range(dim_per_atom):
+                    i = index * dim_per_atom + d
+                    configuration[i] = (
+                        configuration[i]
+                        + forces[i] * dt / atoms[index].mass / friction
+                        + sigma * _random_gaussian() * sqrt_dt
+                        )
