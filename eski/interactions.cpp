@@ -1443,7 +1443,7 @@ struct __pyx_obj_4eski_2md_ListReporter {
 struct __pyx_obj_4eski_2md_PrintReporter {
   struct __pyx_obj_4eski_2md_Reporter __pyx_base;
   PyObject *reported_attrs;
-  PyObject *message_template;
+  PyObject *format_message;
 };
 
 

@@ -63,4 +63,4 @@ cdef class PrintReporter(Reporter):
 
     cdef public:
         list reported_attrs
-        str message_template
+        object format_message

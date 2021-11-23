@@ -242,15 +242,14 @@ cdef class System:
     cpdef void add_all_forces(self):
 
         cdef Interaction interaction
-        cdef object custom_interaction
 
         self.reset_forces()
 
         for interaction in self.interactions:
             interaction._add_all_forces(self)
 
-        for custom_interaction in self.custom_interactions:
-            custom_interaction.add_all_forces(self)
+        for interaction in self.custom_interactions:
+            interaction.add_all_forces(self)
 
     cpdef void simulate(self, Py_ssize_t n):
         """Perform a number of MD simulation steps"""
@@ -305,32 +304,38 @@ cdef class ListReporter(Reporter):
 
     cpdef void report(self, System system):
         cdef dict step_output = {}
+        cdef str attr
 
         for attr in self.reported_attrs:
-            step_output[attr] = getattr(system, attr)
+            attr_value = getattr(system, attr)
+
+            if isinstance(attr_value, np.ndarray):
+                attr_value = np.copy(attr_value)
+
+            step_output[attr] = attr_value
 
         self.output.append(step_output)
 
 cdef class PrintReporter(Reporter):
 
     _default_reported_attrs = ["step", "target_step"]
-    _default_message_template = "Completed step {}/{}"
+    _default_format_message = lambda self, args: f"Completed step {args[0]}/{args[1]} ({int(100 * args[0]/args[1])} %)"
 
     def __init__(
             self, interval, *,
-            reported_attrs=None, message_template=None):
+            reported_attrs=None, format_message=None):
         if reported_attrs is None:
             reported_attrs = self._default_reported_attrs
         self.reported_attrs = reported_attrs
 
-        if message_template is None:
-            message_template = self._default_message_template
-        self.message_template = message_template
+        if format_message is None:
+            format_message = self._default_format_message
+        self.format_message = format_message
 
     cpdef void report(self, System system):
-
         print(
-            self.message_template.format(
-                *[getattr(system, attr) for attr in self.reported_attrs]
-                ), end="\r"
+            self.format_message(
+                [getattr(system, attr) for attr in self.reported_attrs]
+                ),
+            end="\r"
             )

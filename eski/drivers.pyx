@@ -1,6 +1,7 @@
 from typing import Iterable, Mapping
 from typing import Union
 
+from cython.parallel cimport prange
 import numpy as np
 
 from eski.primitive_types import P_AINDEX, P_AVALUE
@@ -117,7 +118,7 @@ cdef class EulerIntegrator(Driver):
 
         system.add_all_forces()
 
-        for index in range(system._n_atoms):
+        for index in prange(system._n_atoms):
             for d in range(dim_per_atom):
                 i = index * dim_per_atom + d
                 configuration[i] = (
@@ -165,7 +166,7 @@ cdef class EulerMaruyamaIntegrator(Driver):
 
         system.add_all_forces()
 
-        for index in range(system._n_atoms):
+        for index in prange(system._n_atoms):
             sigma = csqrt(2 * 0.008314463 * T / atoms[index].mass / friction)
 
             for d in range(dim_per_atom):
