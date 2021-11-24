@@ -6,6 +6,7 @@ from eski.primitive_types cimport AINDEX, AVALUE, ABOOL
 from eski.interactions cimport Interaction
 from eski.drivers cimport Driver
 from eski.atoms cimport Atom, InternalAtom, make_internal_atoms
+from eski.pbc cimport PBCHandler, NoPBC
 
 
 ctypedef struct Resources:
@@ -20,6 +21,7 @@ cdef class System:
         list custom_interactions
         list drivers
         list reporters
+        PBCHandler _pbc
 
     cdef:
         AVALUE[::1] _configuration
@@ -30,8 +32,6 @@ cdef class System:
         AINDEX  _dim_per_atom
         InternalAtom *_atoms
         Resources _resources
-        AVALUE[::1] _bounds
-        bint _use_pbc
         Py_ssize_t _step
         Py_ssize_t _target_step
 

@@ -900,6 +900,7 @@ static const char *__pyx_f[] = {
   "type.pxd",
   "eski/atoms.pxd",
   "eski/interactions.pxd",
+  "eski/pbc.pxd",
   "eski/md.pxd",
 };
 /* NoFastGil.proto */
@@ -1260,6 +1261,10 @@ static CYTHON_INLINE __pyx_t_double_complex __pyx_t_double_complex_from_parts(do
 /*--- Type declarations ---*/
 struct __pyx_obj_4eski_5atoms_Atom;
 struct __pyx_obj_4eski_12interactions_Interaction;
+struct __pyx_obj_4eski_3pbc_PBCHandler;
+struct __pyx_obj_4eski_3pbc_NoPBC;
+struct __pyx_obj_4eski_3pbc_OrthorhombicPBC;
+struct __pyx_obj_4eski_3pbc_TriclinicPBC;
 struct __pyx_obj_4eski_2md_System;
 struct __pyx_obj_4eski_2md_Reporter;
 struct __pyx_obj_4eski_2md_ListReporter;
@@ -1327,7 +1332,7 @@ struct __pyx_t_4eski_5atoms_InternalAtom {
 struct __pyx_t_4eski_2md_Resources;
 typedef struct __pyx_t_4eski_2md_Resources __pyx_t_4eski_2md_Resources;
 
-/* "eski/md.pxd":11
+/* "eski/md.pxd":12
  * 
  * 
  * ctypedef struct Resources:             # <<<<<<<<<<<<<<
@@ -1382,7 +1387,59 @@ struct __pyx_obj_4eski_12interactions_Interaction {
 };
 
 
-/* "eski/md.pxd":15
+/* "eski/pbc.pxd":7
+ * 
+ * 
+ * cdef class PBCHandler:             # <<<<<<<<<<<<<<
+ * 
+ *     cdef void _apply_pbc(self, System system) nogil
+ */
+struct __pyx_obj_4eski_3pbc_PBCHandler {
+  PyObject_HEAD
+  struct __pyx_vtabstruct_4eski_3pbc_PBCHandler *__pyx_vtab;
+};
+
+
+/* "eski/pbc.pxd":12
+ * 
+ * 
+ * cdef class NoPBC(PBCHandler):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+struct __pyx_obj_4eski_3pbc_NoPBC {
+  struct __pyx_obj_4eski_3pbc_PBCHandler __pyx_base;
+};
+
+
+/* "eski/pbc.pxd":16
+ * 
+ * 
+ * cdef class OrthorhombicPBC(PBCHandler):             # <<<<<<<<<<<<<<
+ *     cdef AVALUE[::1] _bounds
+ * 
+ */
+struct __pyx_obj_4eski_3pbc_OrthorhombicPBC {
+  struct __pyx_obj_4eski_3pbc_PBCHandler __pyx_base;
+  __Pyx_memviewslice _bounds;
+};
+
+
+/* "eski/pbc.pxd":20
+ * 
+ * 
+ * cdef class TriclinicPBC(PBCHandler):             # <<<<<<<<<<<<<<
+ *     cdef AVALUE[:, ::1] _box
+ *     cdef AVALUE[:, ::1] _boxinv
+ */
+struct __pyx_obj_4eski_3pbc_TriclinicPBC {
+  struct __pyx_obj_4eski_3pbc_PBCHandler __pyx_base;
+  __Pyx_memviewslice _box;
+  __Pyx_memviewslice _boxinv;
+};
+
+
+/* "eski/md.pxd":16
  * 
  * 
  * cdef class System:             # <<<<<<<<<<<<<<
@@ -1397,6 +1454,7 @@ struct __pyx_obj_4eski_2md_System {
   PyObject *custom_interactions;
   PyObject *drivers;
   PyObject *reporters;
+  struct __pyx_obj_4eski_3pbc_PBCHandler *_pbc;
   __Pyx_memviewslice _configuration;
   __Pyx_memviewslice _velocities;
   __Pyx_memviewslice _forces;
@@ -1405,8 +1463,6 @@ struct __pyx_obj_4eski_2md_System {
   __pyx_t_4eski_15primitive_types_AINDEX _dim_per_atom;
   __pyx_t_4eski_5atoms_InternalAtom *_atoms;
   __pyx_t_4eski_2md_Resources _resources;
-  __Pyx_memviewslice _bounds;
-  int _use_pbc;
   Py_ssize_t _step;
   Py_ssize_t _target_step;
 };
@@ -1625,7 +1681,63 @@ struct __pyx_vtabstruct_4eski_12interactions_Interaction {
 static struct __pyx_vtabstruct_4eski_12interactions_Interaction *__pyx_vtabptr_4eski_12interactions_Interaction;
 
 
-/* "eski/md.pxd":15
+/* "eski/pbc.pxd":7
+ * 
+ * 
+ * cdef class PBCHandler:             # <<<<<<<<<<<<<<
+ * 
+ *     cdef void _apply_pbc(self, System system) nogil
+ */
+
+struct __pyx_vtabstruct_4eski_3pbc_PBCHandler {
+  void (*_apply_pbc)(struct __pyx_obj_4eski_3pbc_PBCHandler *, struct __pyx_obj_4eski_2md_System *);
+};
+static struct __pyx_vtabstruct_4eski_3pbc_PBCHandler *__pyx_vtabptr_4eski_3pbc_PBCHandler;
+
+
+/* "eski/pbc.pxd":12
+ * 
+ * 
+ * cdef class NoPBC(PBCHandler):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+
+struct __pyx_vtabstruct_4eski_3pbc_NoPBC {
+  struct __pyx_vtabstruct_4eski_3pbc_PBCHandler __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_3pbc_NoPBC *__pyx_vtabptr_4eski_3pbc_NoPBC;
+
+
+/* "eski/pbc.pxd":16
+ * 
+ * 
+ * cdef class OrthorhombicPBC(PBCHandler):             # <<<<<<<<<<<<<<
+ *     cdef AVALUE[::1] _bounds
+ * 
+ */
+
+struct __pyx_vtabstruct_4eski_3pbc_OrthorhombicPBC {
+  struct __pyx_vtabstruct_4eski_3pbc_PBCHandler __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_3pbc_OrthorhombicPBC *__pyx_vtabptr_4eski_3pbc_OrthorhombicPBC;
+
+
+/* "eski/pbc.pxd":20
+ * 
+ * 
+ * cdef class TriclinicPBC(PBCHandler):             # <<<<<<<<<<<<<<
+ *     cdef AVALUE[:, ::1] _box
+ *     cdef AVALUE[:, ::1] _boxinv
+ */
+
+struct __pyx_vtabstruct_4eski_3pbc_TriclinicPBC {
+  struct __pyx_vtabstruct_4eski_3pbc_PBCHandler __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_3pbc_TriclinicPBC *__pyx_vtabptr_4eski_3pbc_TriclinicPBC;
+
+
+/* "eski/md.pxd":16
  * 
  * 
  * cdef class System:             # <<<<<<<<<<<<<<
@@ -2918,6 +3030,12 @@ static __pyx_t_4eski_15primitive_types_AVALUE (*__pyx_f_4eski_7metrics__euclidea
 
 /* Module declarations from 'eski.interactions' */
 static PyTypeObject *__pyx_ptype_4eski_12interactions_Interaction = 0;
+
+/* Module declarations from 'eski.pbc' */
+static PyTypeObject *__pyx_ptype_4eski_3pbc_PBCHandler = 0;
+static PyTypeObject *__pyx_ptype_4eski_3pbc_NoPBC = 0;
+static PyTypeObject *__pyx_ptype_4eski_3pbc_OrthorhombicPBC = 0;
+static PyTypeObject *__pyx_ptype_4eski_3pbc_TriclinicPBC = 0;
 
 /* Module declarations from 'eski.md' */
 static PyTypeObject *__pyx_ptype_4eski_2md_System = 0;
@@ -5223,7 +5341,7 @@ static void __pyx_f_4eski_7drivers_15EulerIntegrator__update(struct __pyx_obj_4e
                             goto __pyx_L12;
                             __pyx_L12:;
                             #ifdef _OPENMP
-                            #pragma omp critical(__pyx_parallel_lastprivates0)
+                            #pragma omp critical(__pyx_parallel_lastprivates2)
                             #endif /* _OPENMP */
                             {
                                 __pyx_parallel_temp0 = __pyx_v_d;
@@ -5818,7 +5936,7 @@ static void __pyx_f_4eski_7drivers_23EulerMaruyamaIntegrator__update(struct __py
                             goto __pyx_L12;
                             __pyx_L12:;
                             #ifdef _OPENMP
-                            #pragma omp critical(__pyx_parallel_lastprivates1)
+                            #pragma omp critical(__pyx_parallel_lastprivates3)
                             #endif /* _OPENMP */
                             {
                                 __pyx_parallel_temp0 = __pyx_v_d;
@@ -23237,20 +23355,35 @@ static int __Pyx_modinit_type_import_code(void) {
    if (!__pyx_ptype_4eski_12interactions_Interaction) __PYX_ERR(5, 11, __pyx_L1_error)
   __pyx_vtabptr_4eski_12interactions_Interaction = (struct __pyx_vtabstruct_4eski_12interactions_Interaction*)__Pyx_GetVtable(__pyx_ptype_4eski_12interactions_Interaction->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_12interactions_Interaction)) __PYX_ERR(5, 11, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = PyImport_ImportModule("eski.md"); if (unlikely(!__pyx_t_1)) __PYX_ERR(6, 15, __pyx_L1_error)
+  __pyx_t_1 = PyImport_ImportModule("eski.pbc"); if (unlikely(!__pyx_t_1)) __PYX_ERR(6, 7, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_ptype_4eski_3pbc_PBCHandler = __Pyx_ImportType(__pyx_t_1, "eski.pbc", "PBCHandler", sizeof(struct __pyx_obj_4eski_3pbc_PBCHandler), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_3pbc_PBCHandler) __PYX_ERR(6, 7, __pyx_L1_error)
+  __pyx_vtabptr_4eski_3pbc_PBCHandler = (struct __pyx_vtabstruct_4eski_3pbc_PBCHandler*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_PBCHandler->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_PBCHandler)) __PYX_ERR(6, 7, __pyx_L1_error)
+  __pyx_ptype_4eski_3pbc_NoPBC = __Pyx_ImportType(__pyx_t_1, "eski.pbc", "NoPBC", sizeof(struct __pyx_obj_4eski_3pbc_NoPBC), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_3pbc_NoPBC) __PYX_ERR(6, 12, __pyx_L1_error)
+  __pyx_vtabptr_4eski_3pbc_NoPBC = (struct __pyx_vtabstruct_4eski_3pbc_NoPBC*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_NoPBC->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_NoPBC)) __PYX_ERR(6, 12, __pyx_L1_error)
+  __pyx_ptype_4eski_3pbc_OrthorhombicPBC = __Pyx_ImportType(__pyx_t_1, "eski.pbc", "OrthorhombicPBC", sizeof(struct __pyx_obj_4eski_3pbc_OrthorhombicPBC), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_3pbc_OrthorhombicPBC) __PYX_ERR(6, 16, __pyx_L1_error)
+  __pyx_vtabptr_4eski_3pbc_OrthorhombicPBC = (struct __pyx_vtabstruct_4eski_3pbc_OrthorhombicPBC*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_OrthorhombicPBC->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_OrthorhombicPBC)) __PYX_ERR(6, 16, __pyx_L1_error)
+  __pyx_ptype_4eski_3pbc_TriclinicPBC = __Pyx_ImportType(__pyx_t_1, "eski.pbc", "TriclinicPBC", sizeof(struct __pyx_obj_4eski_3pbc_TriclinicPBC), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_3pbc_TriclinicPBC) __PYX_ERR(6, 20, __pyx_L1_error)
+  __pyx_vtabptr_4eski_3pbc_TriclinicPBC = (struct __pyx_vtabstruct_4eski_3pbc_TriclinicPBC*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_TriclinicPBC->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_TriclinicPBC)) __PYX_ERR(6, 20, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+  __pyx_t_1 = PyImport_ImportModule("eski.md"); if (unlikely(!__pyx_t_1)) __PYX_ERR(7, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_ptype_4eski_2md_System = __Pyx_ImportType(__pyx_t_1, "eski.md", "System", sizeof(struct __pyx_obj_4eski_2md_System), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_4eski_2md_System) __PYX_ERR(6, 15, __pyx_L1_error)
-  __pyx_vtabptr_4eski_2md_System = (struct __pyx_vtabstruct_4eski_2md_System*)__Pyx_GetVtable(__pyx_ptype_4eski_2md_System->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_2md_System)) __PYX_ERR(6, 15, __pyx_L1_error)
+   if (!__pyx_ptype_4eski_2md_System) __PYX_ERR(7, 16, __pyx_L1_error)
+  __pyx_vtabptr_4eski_2md_System = (struct __pyx_vtabstruct_4eski_2md_System*)__Pyx_GetVtable(__pyx_ptype_4eski_2md_System->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_2md_System)) __PYX_ERR(7, 16, __pyx_L1_error)
   __pyx_ptype_4eski_2md_Reporter = __Pyx_ImportType(__pyx_t_1, "eski.md", "Reporter", sizeof(struct __pyx_obj_4eski_2md_Reporter), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_4eski_2md_Reporter) __PYX_ERR(6, 46, __pyx_L1_error)
-  __pyx_vtabptr_4eski_2md_Reporter = (struct __pyx_vtabstruct_4eski_2md_Reporter*)__Pyx_GetVtable(__pyx_ptype_4eski_2md_Reporter->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_2md_Reporter)) __PYX_ERR(6, 46, __pyx_L1_error)
+   if (!__pyx_ptype_4eski_2md_Reporter) __PYX_ERR(7, 46, __pyx_L1_error)
+  __pyx_vtabptr_4eski_2md_Reporter = (struct __pyx_vtabstruct_4eski_2md_Reporter*)__Pyx_GetVtable(__pyx_ptype_4eski_2md_Reporter->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_2md_Reporter)) __PYX_ERR(7, 46, __pyx_L1_error)
   __pyx_ptype_4eski_2md_ListReporter = __Pyx_ImportType(__pyx_t_1, "eski.md", "ListReporter", sizeof(struct __pyx_obj_4eski_2md_ListReporter), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_4eski_2md_ListReporter) __PYX_ERR(6, 55, __pyx_L1_error)
-  __pyx_vtabptr_4eski_2md_ListReporter = (struct __pyx_vtabstruct_4eski_2md_ListReporter*)__Pyx_GetVtable(__pyx_ptype_4eski_2md_ListReporter->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_2md_ListReporter)) __PYX_ERR(6, 55, __pyx_L1_error)
+   if (!__pyx_ptype_4eski_2md_ListReporter) __PYX_ERR(7, 55, __pyx_L1_error)
+  __pyx_vtabptr_4eski_2md_ListReporter = (struct __pyx_vtabstruct_4eski_2md_ListReporter*)__Pyx_GetVtable(__pyx_ptype_4eski_2md_ListReporter->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_2md_ListReporter)) __PYX_ERR(7, 55, __pyx_L1_error)
   __pyx_ptype_4eski_2md_PrintReporter = __Pyx_ImportType(__pyx_t_1, "eski.md", "PrintReporter", sizeof(struct __pyx_obj_4eski_2md_PrintReporter), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_4eski_2md_PrintReporter) __PYX_ERR(6, 62, __pyx_L1_error)
-  __pyx_vtabptr_4eski_2md_PrintReporter = (struct __pyx_vtabstruct_4eski_2md_PrintReporter*)__Pyx_GetVtable(__pyx_ptype_4eski_2md_PrintReporter->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_2md_PrintReporter)) __PYX_ERR(6, 62, __pyx_L1_error)
+   if (!__pyx_ptype_4eski_2md_PrintReporter) __PYX_ERR(7, 62, __pyx_L1_error)
+  __pyx_vtabptr_4eski_2md_PrintReporter = (struct __pyx_vtabstruct_4eski_2md_PrintReporter*)__Pyx_GetVtable(__pyx_ptype_4eski_2md_PrintReporter->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_2md_PrintReporter)) __PYX_ERR(7, 62, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __Pyx_RefNannyFinishContext();
   return 0;

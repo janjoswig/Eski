@@ -20,7 +20,7 @@ cdef class System:
             custom_interactions=None,
             drivers=None,
             reporters=None,
-            bounds=None,
+            pbc=None,
             desc=None,
             copy=False):
 
@@ -114,12 +114,9 @@ cdef class System:
             reporters = []
         self.reporters = reporters
 
-        if bounds is None:
-            self._bounds = np.zeros(dim_per_atom)
-            self._use_pbc = False
-        else:
-            self._bounds = bounds
-            self._use_pbc = True
+        if pbc is None:
+            pbc = NoPBC()
+        self._pbc = pbc
 
         self._step = 0
         self._target_step = 0
@@ -267,11 +264,7 @@ cdef class System:
             for driver in self.drivers:
                 driver._update(self)
 
-            # self.apply_pbc
-
-            # for reporter in self.reporters:
-            #     if self._step % reporter.interval == 0:
-            #         reporter.report(self)
+            self._pbc._apply_pbc(self)
 
             for reporter in self.reporters:
                 if cython.cmod(self._step, reporter.interval) == 0:
