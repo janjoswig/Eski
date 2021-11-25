@@ -170,10 +170,6 @@ cdef class System:
     def target_step(self):
         return self._target_step
 
-    @property
-    def use_pbc(self):
-        return self._use_pbc
-
     def __repr__(self):
         if self.desc == "":
             desc_str = ""
@@ -256,10 +252,9 @@ cdef class System:
         cdef Driver driver
         cdef Reporter reporter
 
-        self._step = 0
         self._target_step += n
 
-        for self._step in range(1, n + 1):
+        for self._step in range(self._step + 1, self._target_step + 1):
 
             for driver in self.drivers:
                 driver._update(self)
@@ -267,7 +262,7 @@ cdef class System:
             self._pbc._apply_pbc(self)
 
             for reporter in self.reporters:
-                if cython.cmod(self._step, reporter.interval) == 0:
+                if (self._step % reporter.interval) == 0:
                     reporter.report(self)
 
 
