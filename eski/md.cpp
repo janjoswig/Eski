@@ -1261,8 +1261,13 @@ static CYTHON_INLINE __pyx_t_double_complex __pyx_t_double_complex_from_parts(do
 
 /*--- Type declarations ---*/
 struct __pyx_obj_4eski_12interactions_Interaction;
+struct __pyx_obj_4eski_12interactions_ConstantBias;
+struct __pyx_obj_4eski_12interactions_HarmonicBond;
+struct __pyx_obj_4eski_12interactions_LJ;
 struct __pyx_obj_4eski_5atoms_Atom;
 struct __pyx_obj_4eski_7drivers_Driver;
+struct __pyx_obj_4eski_7drivers_EulerIntegrator;
+struct __pyx_obj_4eski_7drivers_EulerMaruyamaIntegrator;
 struct __pyx_obj_4eski_3pbc_PBCHandler;
 struct __pyx_obj_4eski_3pbc_NoPBC;
 struct __pyx_obj_4eski_3pbc_OrthorhombicPBC;
@@ -1363,6 +1368,41 @@ struct __pyx_obj_4eski_12interactions_Interaction {
 };
 
 
+/* "eski/interactions.pxd":61
+ * 
+ * 
+ * cdef class ConstantBias(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+struct __pyx_obj_4eski_12interactions_ConstantBias {
+  struct __pyx_obj_4eski_12interactions_Interaction __pyx_base;
+};
+
+
+/* "eski/interactions.pxd":65
+ * 
+ * 
+ * cdef class HarmonicBond(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+struct __pyx_obj_4eski_12interactions_HarmonicBond {
+  struct __pyx_obj_4eski_12interactions_Interaction __pyx_base;
+};
+
+
+/* "eski/interactions.pxd":69
+ * 
+ * 
+ * cdef class LJ(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ */
+struct __pyx_obj_4eski_12interactions_LJ {
+  struct __pyx_obj_4eski_12interactions_Interaction __pyx_base;
+};
+
+
 /* "eski/atoms.pxd":10
  * 
  * 
@@ -1397,6 +1437,29 @@ struct __pyx_obj_4eski_7drivers_Driver {
   __pyx_t_4eski_15primitive_types_AVALUE *_parameters;
   __pyx_t_4eski_15primitive_types_AINDEX _dparam;
   __pyx_t_4eski_15primitive_types_AINDEX _n_parameters;
+};
+
+
+/* "eski/drivers.pxd":23
+ * 
+ * 
+ * cdef class EulerIntegrator(Driver):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+struct __pyx_obj_4eski_7drivers_EulerIntegrator {
+  struct __pyx_obj_4eski_7drivers_Driver __pyx_base;
+};
+
+
+/* "eski/drivers.pxd":27
+ * 
+ * 
+ * cdef class EulerMaruyamaIntegrator(Driver):             # <<<<<<<<<<<<<<
+ *     pass
+ */
+struct __pyx_obj_4eski_7drivers_EulerMaruyamaIntegrator {
+  struct __pyx_obj_4eski_7drivers_Driver __pyx_base;
 };
 
 
@@ -1624,6 +1687,47 @@ struct __pyx_vtabstruct_4eski_12interactions_Interaction {
 static struct __pyx_vtabstruct_4eski_12interactions_Interaction *__pyx_vtabptr_4eski_12interactions_Interaction;
 
 
+/* "eski/interactions.pxd":61
+ * 
+ * 
+ * cdef class ConstantBias(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+
+struct __pyx_vtabstruct_4eski_12interactions_ConstantBias {
+  struct __pyx_vtabstruct_4eski_12interactions_Interaction __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_12interactions_ConstantBias *__pyx_vtabptr_4eski_12interactions_ConstantBias;
+
+
+/* "eski/interactions.pxd":65
+ * 
+ * 
+ * cdef class HarmonicBond(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+
+struct __pyx_vtabstruct_4eski_12interactions_HarmonicBond {
+  struct __pyx_vtabstruct_4eski_12interactions_Interaction __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_12interactions_HarmonicBond *__pyx_vtabptr_4eski_12interactions_HarmonicBond;
+
+
+/* "eski/interactions.pxd":69
+ * 
+ * 
+ * cdef class LJ(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ */
+
+struct __pyx_vtabstruct_4eski_12interactions_LJ {
+  struct __pyx_vtabstruct_4eski_12interactions_Interaction __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_12interactions_LJ *__pyx_vtabptr_4eski_12interactions_LJ;
+
+
 /* "eski/drivers.pxd":14
  * 
  * 
@@ -1636,6 +1740,33 @@ struct __pyx_vtabstruct_4eski_7drivers_Driver {
   void (*_update)(struct __pyx_obj_4eski_7drivers_Driver *, struct __pyx_obj_4eski_2md_System *);
 };
 static struct __pyx_vtabstruct_4eski_7drivers_Driver *__pyx_vtabptr_4eski_7drivers_Driver;
+
+
+/* "eski/drivers.pxd":23
+ * 
+ * 
+ * cdef class EulerIntegrator(Driver):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+
+struct __pyx_vtabstruct_4eski_7drivers_EulerIntegrator {
+  struct __pyx_vtabstruct_4eski_7drivers_Driver __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_7drivers_EulerIntegrator *__pyx_vtabptr_4eski_7drivers_EulerIntegrator;
+
+
+/* "eski/drivers.pxd":27
+ * 
+ * 
+ * cdef class EulerMaruyamaIntegrator(Driver):             # <<<<<<<<<<<<<<
+ *     pass
+ */
+
+struct __pyx_vtabstruct_4eski_7drivers_EulerMaruyamaIntegrator {
+  struct __pyx_vtabstruct_4eski_7drivers_Driver __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_7drivers_EulerMaruyamaIntegrator *__pyx_vtabptr_4eski_7drivers_EulerMaruyamaIntegrator;
 
 
 /* "eski/pbc.pxd":7
@@ -2931,6 +3062,9 @@ static __pyx_t_4eski_15primitive_types_AVALUE (*__pyx_f_4eski_7metrics__euclidea
 
 /* Module declarations from 'eski.interactions' */
 static PyTypeObject *__pyx_ptype_4eski_12interactions_Interaction = 0;
+static PyTypeObject *__pyx_ptype_4eski_12interactions_ConstantBias = 0;
+static PyTypeObject *__pyx_ptype_4eski_12interactions_HarmonicBond = 0;
+static PyTypeObject *__pyx_ptype_4eski_12interactions_LJ = 0;
 
 /* Module declarations from 'eski.atoms' */
 static PyTypeObject *__pyx_ptype_4eski_5atoms_Atom = 0;
@@ -2938,6 +3072,8 @@ static void (*__pyx_f_4eski_5atoms_make_internal_atoms)(PyObject *, __pyx_t_4esk
 
 /* Module declarations from 'eski.drivers' */
 static PyTypeObject *__pyx_ptype_4eski_7drivers_Driver = 0;
+static PyTypeObject *__pyx_ptype_4eski_7drivers_EulerIntegrator = 0;
+static PyTypeObject *__pyx_ptype_4eski_7drivers_EulerMaruyamaIntegrator = 0;
 
 /* Module declarations from 'eski.pbc' */
 static PyTypeObject *__pyx_ptype_4eski_3pbc_PBCHandler = 0;
@@ -28026,6 +28162,15 @@ static int __Pyx_modinit_type_import_code(void) {
   __pyx_ptype_4eski_12interactions_Interaction = __Pyx_ImportType(__pyx_t_1, "eski.interactions", "Interaction", sizeof(struct __pyx_obj_4eski_12interactions_Interaction), __Pyx_ImportType_CheckSize_Warn);
    if (!__pyx_ptype_4eski_12interactions_Interaction) __PYX_ERR(5, 11, __pyx_L1_error)
   __pyx_vtabptr_4eski_12interactions_Interaction = (struct __pyx_vtabstruct_4eski_12interactions_Interaction*)__Pyx_GetVtable(__pyx_ptype_4eski_12interactions_Interaction->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_12interactions_Interaction)) __PYX_ERR(5, 11, __pyx_L1_error)
+  __pyx_ptype_4eski_12interactions_ConstantBias = __Pyx_ImportType(__pyx_t_1, "eski.interactions", "ConstantBias", sizeof(struct __pyx_obj_4eski_12interactions_ConstantBias), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_12interactions_ConstantBias) __PYX_ERR(5, 61, __pyx_L1_error)
+  __pyx_vtabptr_4eski_12interactions_ConstantBias = (struct __pyx_vtabstruct_4eski_12interactions_ConstantBias*)__Pyx_GetVtable(__pyx_ptype_4eski_12interactions_ConstantBias->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_12interactions_ConstantBias)) __PYX_ERR(5, 61, __pyx_L1_error)
+  __pyx_ptype_4eski_12interactions_HarmonicBond = __Pyx_ImportType(__pyx_t_1, "eski.interactions", "HarmonicBond", sizeof(struct __pyx_obj_4eski_12interactions_HarmonicBond), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_12interactions_HarmonicBond) __PYX_ERR(5, 65, __pyx_L1_error)
+  __pyx_vtabptr_4eski_12interactions_HarmonicBond = (struct __pyx_vtabstruct_4eski_12interactions_HarmonicBond*)__Pyx_GetVtable(__pyx_ptype_4eski_12interactions_HarmonicBond->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_12interactions_HarmonicBond)) __PYX_ERR(5, 65, __pyx_L1_error)
+  __pyx_ptype_4eski_12interactions_LJ = __Pyx_ImportType(__pyx_t_1, "eski.interactions", "LJ", sizeof(struct __pyx_obj_4eski_12interactions_LJ), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_12interactions_LJ) __PYX_ERR(5, 69, __pyx_L1_error)
+  __pyx_vtabptr_4eski_12interactions_LJ = (struct __pyx_vtabstruct_4eski_12interactions_LJ*)__Pyx_GetVtable(__pyx_ptype_4eski_12interactions_LJ->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_12interactions_LJ)) __PYX_ERR(5, 69, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = PyImport_ImportModule("eski.atoms"); if (unlikely(!__pyx_t_1)) __PYX_ERR(6, 10, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
@@ -28037,6 +28182,12 @@ static int __Pyx_modinit_type_import_code(void) {
   __pyx_ptype_4eski_7drivers_Driver = __Pyx_ImportType(__pyx_t_1, "eski.drivers", "Driver", sizeof(struct __pyx_obj_4eski_7drivers_Driver), __Pyx_ImportType_CheckSize_Warn);
    if (!__pyx_ptype_4eski_7drivers_Driver) __PYX_ERR(7, 14, __pyx_L1_error)
   __pyx_vtabptr_4eski_7drivers_Driver = (struct __pyx_vtabstruct_4eski_7drivers_Driver*)__Pyx_GetVtable(__pyx_ptype_4eski_7drivers_Driver->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_7drivers_Driver)) __PYX_ERR(7, 14, __pyx_L1_error)
+  __pyx_ptype_4eski_7drivers_EulerIntegrator = __Pyx_ImportType(__pyx_t_1, "eski.drivers", "EulerIntegrator", sizeof(struct __pyx_obj_4eski_7drivers_EulerIntegrator), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_7drivers_EulerIntegrator) __PYX_ERR(7, 23, __pyx_L1_error)
+  __pyx_vtabptr_4eski_7drivers_EulerIntegrator = (struct __pyx_vtabstruct_4eski_7drivers_EulerIntegrator*)__Pyx_GetVtable(__pyx_ptype_4eski_7drivers_EulerIntegrator->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_7drivers_EulerIntegrator)) __PYX_ERR(7, 23, __pyx_L1_error)
+  __pyx_ptype_4eski_7drivers_EulerMaruyamaIntegrator = __Pyx_ImportType(__pyx_t_1, "eski.drivers", "EulerMaruyamaIntegrator", sizeof(struct __pyx_obj_4eski_7drivers_EulerMaruyamaIntegrator), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_7drivers_EulerMaruyamaIntegrator) __PYX_ERR(7, 27, __pyx_L1_error)
+  __pyx_vtabptr_4eski_7drivers_EulerMaruyamaIntegrator = (struct __pyx_vtabstruct_4eski_7drivers_EulerMaruyamaIntegrator*)__Pyx_GetVtable(__pyx_ptype_4eski_7drivers_EulerMaruyamaIntegrator->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_7drivers_EulerMaruyamaIntegrator)) __PYX_ERR(7, 27, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = PyImport_ImportModule("eski.pbc"); if (unlikely(!__pyx_t_1)) __PYX_ERR(8, 7, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);

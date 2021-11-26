@@ -18,3 +18,11 @@ cdef class Driver:
         AINDEX _n_parameters
 
     cdef void _update(self, System system)
+
+
+cdef class EulerIntegrator(Driver):
+    pass
+
+
+cdef class EulerMaruyamaIntegrator(Driver):
+    pass

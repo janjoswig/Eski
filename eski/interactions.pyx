@@ -152,7 +152,7 @@ cdef class Interaction:
     cpdef void _check_index_param_consistency(self) except *:
         """Raise error if indices and parameters do not match"""
 
-        if cython.cmod(self._n_indices, self._dindex) > 0:
+        if (self._n_indices % self._dindex) > 0:
             raise ValueError(
                 f"Wrong number of 'indices'; must be multiple of {self._dindex}"
                 )
@@ -164,7 +164,7 @@ cdef class Interaction:
                 f"Force {type(self).__name__!r} takes no parameters"
                 )
 
-        if cython.cmod(self._n_parameters, self._dparam) > 0:
+        if (self._n_parameters % self._dparam) > 0:
             raise ValueError(
                 f"Wrong number of 'parameters'; must be multiple of {self._dparam}"
                 )
@@ -432,27 +432,40 @@ cdef class LJ(Interaction):
         cdef AVALUE r, f, _f
         cdef AINDEX p1 = self._indices[index * self._dindex]
         cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AVALUE e = self._parameters[index * self._dparam]
-        cdef AVALUE s = self._parameters[index * self._dparam + 1]
+        cdef AVALUE s = self._parameters[index * self._dparam]
+        cdef AVALUE e = self._parameters[index * self._dparam + 1]
         cdef AVALUE *fv1
         cdef AVALUE *fv2
+        cdef AVALUE *rv = system._resources.rv
         cdef AINDEX dim_per_atom = system._dim_per_atom
         cdef AVALUE *configuration = &system._configuration[0]
         cdef AVALUE *forces = &system._forces[0]
 
-        r = _euclidean_distance(
-            &system._resources.rv[0],
+        # r = _euclidean_distance(
+        #     &system._resources.rv[0],
+        #     &configuration[p1 * dim_per_atom],
+        #     &configuration[p2 * dim_per_atom],
+        #     dim_per_atom
+        #     )
+
+        system._pbc._pbc_distance(
+            rv,
             &configuration[p1 * dim_per_atom],
             &configuration[p2 * dim_per_atom],
             dim_per_atom
             )
+
+        r = 0
+        for i in range(dim_per_atom):
+            r = r + cpow(rv[i], 2)
+        r = csqrt(r)
 
         fv1 = &forces[p1 * dim_per_atom]
         fv2 = &forces[p2 * dim_per_atom]
 
         f = 24 * e * (2 * cpow(s, 12) / cpow(r, 13) - cpow(s, 6) / cpow(r, 7))
         for i in range(dim_per_atom):
-            _f = f * system._resources.rv[i] / r
+            _f = f * rv[i] / r
             fv1[i] += _f
             fv2[i] -= _f
 
@@ -464,17 +477,23 @@ cdef class LJ(Interaction):
         cdef AVALUE r
         cdef AINDEX p1 = self._indices[index * self._dindex]
         cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AVALUE e = self._parameters[index * self._dparam]
-        cdef AVALUE s = self._parameters[index * self._dparam + 1]
+        cdef AVALUE s = self._parameters[index * self._dparam]
+        cdef AVALUE e = self._parameters[index * self._dparam + 1]
         cdef AINDEX dim_per_atom = system._dim_per_atom
         cdef AVALUE *configuration = &system._configuration[0]
+        cdef AVALUE *rv = system._resources.rv
 
-        r = _euclidean_distance(
-            &system._resources.rv[0],
+        system._pbc._pbc_distance(
+            rv,
             &configuration[p1 * dim_per_atom],
             &configuration[p2 * dim_per_atom],
             dim_per_atom
             )
+
+        r = 0
+        for i in range(dim_per_atom):
+            r = r + cpow(rv[i], 2)
+        r = csqrt(r)
 
         return 4 * e * (cpow(s / r, 12) - cpow(s / r, 6))
 

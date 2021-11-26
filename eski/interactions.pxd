@@ -55,3 +55,16 @@ cdef class Interaction:
 
     cpdef void _check_index_param_consistency(self) except *
     cpdef void _check_interaction_index(self, AINDEX index) except *
+
+
+
+cdef class ConstantBias(Interaction):
+    pass
+
+
+cdef class HarmonicBond(Interaction):
+    pass
+
+
+cdef class LJ(Interaction):
+    pass

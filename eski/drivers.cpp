@@ -1261,6 +1261,9 @@ static CYTHON_INLINE __pyx_t_double_complex __pyx_t_double_complex_from_parts(do
 /*--- Type declarations ---*/
 struct __pyx_obj_4eski_5atoms_Atom;
 struct __pyx_obj_4eski_12interactions_Interaction;
+struct __pyx_obj_4eski_12interactions_ConstantBias;
+struct __pyx_obj_4eski_12interactions_HarmonicBond;
+struct __pyx_obj_4eski_12interactions_LJ;
 struct __pyx_obj_4eski_3pbc_PBCHandler;
 struct __pyx_obj_4eski_3pbc_NoPBC;
 struct __pyx_obj_4eski_3pbc_OrthorhombicPBC;
@@ -1387,6 +1390,41 @@ struct __pyx_obj_4eski_12interactions_Interaction {
 };
 
 
+/* "eski/interactions.pxd":61
+ * 
+ * 
+ * cdef class ConstantBias(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+struct __pyx_obj_4eski_12interactions_ConstantBias {
+  struct __pyx_obj_4eski_12interactions_Interaction __pyx_base;
+};
+
+
+/* "eski/interactions.pxd":65
+ * 
+ * 
+ * cdef class HarmonicBond(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+struct __pyx_obj_4eski_12interactions_HarmonicBond {
+  struct __pyx_obj_4eski_12interactions_Interaction __pyx_base;
+};
+
+
+/* "eski/interactions.pxd":69
+ * 
+ * 
+ * cdef class LJ(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ */
+struct __pyx_obj_4eski_12interactions_LJ {
+  struct __pyx_obj_4eski_12interactions_Interaction __pyx_base;
+};
+
+
 /* "eski/pbc.pxd":7
  * 
  * 
@@ -1400,8 +1438,8 @@ struct __pyx_obj_4eski_3pbc_PBCHandler {
 };
 
 
-/* "eski/pbc.pxd":12
- * 
+/* "eski/pbc.pxd":14
+ *         AINDEX dim_per_atom) nogil
  * 
  * cdef class NoPBC(PBCHandler):             # <<<<<<<<<<<<<<
  *     pass
@@ -1412,7 +1450,7 @@ struct __pyx_obj_4eski_3pbc_NoPBC {
 };
 
 
-/* "eski/pbc.pxd":16
+/* "eski/pbc.pxd":18
  * 
  * 
  * cdef class OrthorhombicPBC(PBCHandler):             # <<<<<<<<<<<<<<
@@ -1425,7 +1463,7 @@ struct __pyx_obj_4eski_3pbc_OrthorhombicPBC {
 };
 
 
-/* "eski/pbc.pxd":20
+/* "eski/pbc.pxd":22
  * 
  * 
  * cdef class TriclinicPBC(PBCHandler):             # <<<<<<<<<<<<<<
@@ -1526,11 +1564,11 @@ struct __pyx_obj_4eski_7drivers_Driver {
 };
 
 
-/* "eski/drivers.pyx":92
+/* "eski/drivers.pxd":23
  * 
  * 
  * cdef class EulerIntegrator(Driver):             # <<<<<<<<<<<<<<
- *     """Propagate positions and velocities with a forward Euler scheme
+ *     pass
  * 
  */
 struct __pyx_obj_4eski_7drivers_EulerIntegrator {
@@ -1538,12 +1576,11 @@ struct __pyx_obj_4eski_7drivers_EulerIntegrator {
 };
 
 
-/* "eski/drivers.pyx":137
+/* "eski/drivers.pxd":27
  * 
  * 
  * cdef class EulerMaruyamaIntegrator(Driver):             # <<<<<<<<<<<<<<
- *     """Propagate positions and velocities with a Euler-Maruyama scheme
- * 
+ *     pass
  */
 struct __pyx_obj_4eski_7drivers_EulerMaruyamaIntegrator {
   struct __pyx_obj_4eski_7drivers_Driver __pyx_base;
@@ -1681,6 +1718,47 @@ struct __pyx_vtabstruct_4eski_12interactions_Interaction {
 static struct __pyx_vtabstruct_4eski_12interactions_Interaction *__pyx_vtabptr_4eski_12interactions_Interaction;
 
 
+/* "eski/interactions.pxd":61
+ * 
+ * 
+ * cdef class ConstantBias(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+
+struct __pyx_vtabstruct_4eski_12interactions_ConstantBias {
+  struct __pyx_vtabstruct_4eski_12interactions_Interaction __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_12interactions_ConstantBias *__pyx_vtabptr_4eski_12interactions_ConstantBias;
+
+
+/* "eski/interactions.pxd":65
+ * 
+ * 
+ * cdef class HarmonicBond(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ * 
+ */
+
+struct __pyx_vtabstruct_4eski_12interactions_HarmonicBond {
+  struct __pyx_vtabstruct_4eski_12interactions_Interaction __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_12interactions_HarmonicBond *__pyx_vtabptr_4eski_12interactions_HarmonicBond;
+
+
+/* "eski/interactions.pxd":69
+ * 
+ * 
+ * cdef class LJ(Interaction):             # <<<<<<<<<<<<<<
+ *     pass
+ */
+
+struct __pyx_vtabstruct_4eski_12interactions_LJ {
+  struct __pyx_vtabstruct_4eski_12interactions_Interaction __pyx_base;
+};
+static struct __pyx_vtabstruct_4eski_12interactions_LJ *__pyx_vtabptr_4eski_12interactions_LJ;
+
+
 /* "eski/pbc.pxd":7
  * 
  * 
@@ -1691,12 +1769,13 @@ static struct __pyx_vtabstruct_4eski_12interactions_Interaction *__pyx_vtabptr_4
 
 struct __pyx_vtabstruct_4eski_3pbc_PBCHandler {
   void (*_apply_pbc)(struct __pyx_obj_4eski_3pbc_PBCHandler *, struct __pyx_obj_4eski_2md_System *);
+  void (*_pbc_distance)(struct __pyx_obj_4eski_3pbc_PBCHandler *, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_15primitive_types_AVALUE *, __pyx_t_4eski_15primitive_types_AINDEX);
 };
 static struct __pyx_vtabstruct_4eski_3pbc_PBCHandler *__pyx_vtabptr_4eski_3pbc_PBCHandler;
 
 
-/* "eski/pbc.pxd":12
- * 
+/* "eski/pbc.pxd":14
+ *         AINDEX dim_per_atom) nogil
  * 
  * cdef class NoPBC(PBCHandler):             # <<<<<<<<<<<<<<
  *     pass
@@ -1709,7 +1788,7 @@ struct __pyx_vtabstruct_4eski_3pbc_NoPBC {
 static struct __pyx_vtabstruct_4eski_3pbc_NoPBC *__pyx_vtabptr_4eski_3pbc_NoPBC;
 
 
-/* "eski/pbc.pxd":16
+/* "eski/pbc.pxd":18
  * 
  * 
  * cdef class OrthorhombicPBC(PBCHandler):             # <<<<<<<<<<<<<<
@@ -1723,7 +1802,7 @@ struct __pyx_vtabstruct_4eski_3pbc_OrthorhombicPBC {
 static struct __pyx_vtabstruct_4eski_3pbc_OrthorhombicPBC *__pyx_vtabptr_4eski_3pbc_OrthorhombicPBC;
 
 
-/* "eski/pbc.pxd":20
+/* "eski/pbc.pxd":22
  * 
  * 
  * cdef class TriclinicPBC(PBCHandler):             # <<<<<<<<<<<<<<
@@ -3030,6 +3109,9 @@ static __pyx_t_4eski_15primitive_types_AVALUE (*__pyx_f_4eski_7metrics__euclidea
 
 /* Module declarations from 'eski.interactions' */
 static PyTypeObject *__pyx_ptype_4eski_12interactions_Interaction = 0;
+static PyTypeObject *__pyx_ptype_4eski_12interactions_ConstantBias = 0;
+static PyTypeObject *__pyx_ptype_4eski_12interactions_HarmonicBond = 0;
+static PyTypeObject *__pyx_ptype_4eski_12interactions_LJ = 0;
 
 /* Module declarations from 'eski.pbc' */
 static PyTypeObject *__pyx_ptype_4eski_3pbc_PBCHandler = 0;
@@ -5341,7 +5423,7 @@ static void __pyx_f_4eski_7drivers_15EulerIntegrator__update(struct __pyx_obj_4e
                             goto __pyx_L12;
                             __pyx_L12:;
                             #ifdef _OPENMP
-                            #pragma omp critical(__pyx_parallel_lastprivates2)
+                            #pragma omp critical(__pyx_parallel_lastprivates0)
                             #endif /* _OPENMP */
                             {
                                 __pyx_parallel_temp0 = __pyx_v_d;
@@ -5936,7 +6018,7 @@ static void __pyx_f_4eski_7drivers_23EulerMaruyamaIntegrator__update(struct __py
                             goto __pyx_L12;
                             __pyx_L12:;
                             #ifdef _OPENMP
-                            #pragma omp critical(__pyx_parallel_lastprivates3)
+                            #pragma omp critical(__pyx_parallel_lastprivates1)
                             #endif /* _OPENMP */
                             {
                                 __pyx_parallel_temp0 = __pyx_v_d;
@@ -23354,6 +23436,15 @@ static int __Pyx_modinit_type_import_code(void) {
   __pyx_ptype_4eski_12interactions_Interaction = __Pyx_ImportType(__pyx_t_1, "eski.interactions", "Interaction", sizeof(struct __pyx_obj_4eski_12interactions_Interaction), __Pyx_ImportType_CheckSize_Warn);
    if (!__pyx_ptype_4eski_12interactions_Interaction) __PYX_ERR(5, 11, __pyx_L1_error)
   __pyx_vtabptr_4eski_12interactions_Interaction = (struct __pyx_vtabstruct_4eski_12interactions_Interaction*)__Pyx_GetVtable(__pyx_ptype_4eski_12interactions_Interaction->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_12interactions_Interaction)) __PYX_ERR(5, 11, __pyx_L1_error)
+  __pyx_ptype_4eski_12interactions_ConstantBias = __Pyx_ImportType(__pyx_t_1, "eski.interactions", "ConstantBias", sizeof(struct __pyx_obj_4eski_12interactions_ConstantBias), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_12interactions_ConstantBias) __PYX_ERR(5, 61, __pyx_L1_error)
+  __pyx_vtabptr_4eski_12interactions_ConstantBias = (struct __pyx_vtabstruct_4eski_12interactions_ConstantBias*)__Pyx_GetVtable(__pyx_ptype_4eski_12interactions_ConstantBias->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_12interactions_ConstantBias)) __PYX_ERR(5, 61, __pyx_L1_error)
+  __pyx_ptype_4eski_12interactions_HarmonicBond = __Pyx_ImportType(__pyx_t_1, "eski.interactions", "HarmonicBond", sizeof(struct __pyx_obj_4eski_12interactions_HarmonicBond), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_12interactions_HarmonicBond) __PYX_ERR(5, 65, __pyx_L1_error)
+  __pyx_vtabptr_4eski_12interactions_HarmonicBond = (struct __pyx_vtabstruct_4eski_12interactions_HarmonicBond*)__Pyx_GetVtable(__pyx_ptype_4eski_12interactions_HarmonicBond->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_12interactions_HarmonicBond)) __PYX_ERR(5, 65, __pyx_L1_error)
+  __pyx_ptype_4eski_12interactions_LJ = __Pyx_ImportType(__pyx_t_1, "eski.interactions", "LJ", sizeof(struct __pyx_obj_4eski_12interactions_LJ), __Pyx_ImportType_CheckSize_Warn);
+   if (!__pyx_ptype_4eski_12interactions_LJ) __PYX_ERR(5, 69, __pyx_L1_error)
+  __pyx_vtabptr_4eski_12interactions_LJ = (struct __pyx_vtabstruct_4eski_12interactions_LJ*)__Pyx_GetVtable(__pyx_ptype_4eski_12interactions_LJ->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_12interactions_LJ)) __PYX_ERR(5, 69, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = PyImport_ImportModule("eski.pbc"); if (unlikely(!__pyx_t_1)) __PYX_ERR(6, 7, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
@@ -23361,14 +23452,14 @@ static int __Pyx_modinit_type_import_code(void) {
    if (!__pyx_ptype_4eski_3pbc_PBCHandler) __PYX_ERR(6, 7, __pyx_L1_error)
   __pyx_vtabptr_4eski_3pbc_PBCHandler = (struct __pyx_vtabstruct_4eski_3pbc_PBCHandler*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_PBCHandler->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_PBCHandler)) __PYX_ERR(6, 7, __pyx_L1_error)
   __pyx_ptype_4eski_3pbc_NoPBC = __Pyx_ImportType(__pyx_t_1, "eski.pbc", "NoPBC", sizeof(struct __pyx_obj_4eski_3pbc_NoPBC), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_4eski_3pbc_NoPBC) __PYX_ERR(6, 12, __pyx_L1_error)
-  __pyx_vtabptr_4eski_3pbc_NoPBC = (struct __pyx_vtabstruct_4eski_3pbc_NoPBC*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_NoPBC->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_NoPBC)) __PYX_ERR(6, 12, __pyx_L1_error)
+   if (!__pyx_ptype_4eski_3pbc_NoPBC) __PYX_ERR(6, 14, __pyx_L1_error)
+  __pyx_vtabptr_4eski_3pbc_NoPBC = (struct __pyx_vtabstruct_4eski_3pbc_NoPBC*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_NoPBC->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_NoPBC)) __PYX_ERR(6, 14, __pyx_L1_error)
   __pyx_ptype_4eski_3pbc_OrthorhombicPBC = __Pyx_ImportType(__pyx_t_1, "eski.pbc", "OrthorhombicPBC", sizeof(struct __pyx_obj_4eski_3pbc_OrthorhombicPBC), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_4eski_3pbc_OrthorhombicPBC) __PYX_ERR(6, 16, __pyx_L1_error)
-  __pyx_vtabptr_4eski_3pbc_OrthorhombicPBC = (struct __pyx_vtabstruct_4eski_3pbc_OrthorhombicPBC*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_OrthorhombicPBC->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_OrthorhombicPBC)) __PYX_ERR(6, 16, __pyx_L1_error)
+   if (!__pyx_ptype_4eski_3pbc_OrthorhombicPBC) __PYX_ERR(6, 18, __pyx_L1_error)
+  __pyx_vtabptr_4eski_3pbc_OrthorhombicPBC = (struct __pyx_vtabstruct_4eski_3pbc_OrthorhombicPBC*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_OrthorhombicPBC->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_OrthorhombicPBC)) __PYX_ERR(6, 18, __pyx_L1_error)
   __pyx_ptype_4eski_3pbc_TriclinicPBC = __Pyx_ImportType(__pyx_t_1, "eski.pbc", "TriclinicPBC", sizeof(struct __pyx_obj_4eski_3pbc_TriclinicPBC), __Pyx_ImportType_CheckSize_Warn);
-   if (!__pyx_ptype_4eski_3pbc_TriclinicPBC) __PYX_ERR(6, 20, __pyx_L1_error)
-  __pyx_vtabptr_4eski_3pbc_TriclinicPBC = (struct __pyx_vtabstruct_4eski_3pbc_TriclinicPBC*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_TriclinicPBC->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_TriclinicPBC)) __PYX_ERR(6, 20, __pyx_L1_error)
+   if (!__pyx_ptype_4eski_3pbc_TriclinicPBC) __PYX_ERR(6, 22, __pyx_L1_error)
+  __pyx_vtabptr_4eski_3pbc_TriclinicPBC = (struct __pyx_vtabstruct_4eski_3pbc_TriclinicPBC*)__Pyx_GetVtable(__pyx_ptype_4eski_3pbc_TriclinicPBC->tp_dict); if (unlikely(!__pyx_vtabptr_4eski_3pbc_TriclinicPBC)) __PYX_ERR(6, 22, __pyx_L1_error)
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
   __pyx_t_1 = PyImport_ImportModule("eski.md"); if (unlikely(!__pyx_t_1)) __PYX_ERR(7, 16, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
