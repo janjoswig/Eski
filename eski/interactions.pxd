@@ -62,6 +62,10 @@ cdef class ConstantBias(Interaction):
     pass
 
 
+cdef class HarmonicPositionRestraint(Interaction):
+    pass
+
+
 cdef class HarmonicBond(Interaction):
     pass
 

@@ -334,6 +334,71 @@ cdef class ConstantBias(Interaction):
         return 0
 
 
+cdef class HarmonicPositionRestraint(Interaction):
+    """Harmonic spring force to restrain atom positions"""
+
+    _default_index_names = ["p1"]
+    _default_param_names = []
+    _default_id = 1
+
+    def __init__(self, *args, **kwargs):
+        if kwargs["param_names"] is None:
+            raise ValueError(
+                "This interaction type requires `param_names`"
+                )
+
+        super().__init__(*args, **kwargs)
+
+    cdef void _add_force_by_index(
+            self,
+            AINDEX index,
+            System system) nogil:
+        """Evaluate harmonic restraining force
+
+        Args:
+            index: Index of interaction
+            system: :class:`eski.md.System`
+        """
+
+        cdef AINDEX i
+        cdef AVALUE r, f
+        cdef AINDEX p1 = self._indices[index * self._dindex]
+        cdef AVALUE r0 = self._parameters[index * self._dparam]
+        cdef AVALUE k = self._parameters[index * self._dparam + 1]
+        cdef AVALUE *anchor = &self._parameters[index * self._dparam + 2]
+        cdef AVALUE *fv1
+        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *rv = system._resources.rv
+        cdef AVALUE *configuration = &system._configuration[0]
+        cdef AVALUE *forces = &system._forces[0]
+
+        system._pbc._pbc_distance(
+            rv,
+            &configuration[p1 * dim_per_atom],
+            anchor,
+            dim_per_atom
+            )
+
+        r = 0
+        for i in range(dim_per_atom):
+            r = r + cpow(rv[i], 2)
+        r = csqrt(r)
+
+        if r != 0:
+            fv1 = &forces[p1 * dim_per_atom]
+
+            f = -k * (r - r0)
+            for i in range(dim_per_atom):
+                fv1[i] += f * system._resources.rv[i] / r
+
+    cdef AVALUE _get_energy_by_index(
+            self,
+            AINDEX index,
+            System system) nogil:
+
+        return 0
+
+
 cdef class HarmonicBond(Interaction):
     """Harmonic spring force approximating a chemical bond"""
 
@@ -364,16 +429,21 @@ cdef class HarmonicBond(Interaction):
         cdef AVALUE *fv1
         cdef AVALUE *fv2
         cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *rv = system._resources.rv
         cdef AVALUE *configuration = &system._configuration[0]
         cdef AVALUE *forces = &system._forces[0]
 
-
-        r = _euclidean_distance(
-            &system._resources.rv[0],
+        system._pbc._pbc_distance(
+            rv,
             &configuration[p1 * dim_per_atom],
             &configuration[p2 * dim_per_atom],
-            system._dim_per_atom
+            dim_per_atom
             )
+
+        r = 0
+        for i in range(dim_per_atom):
+            r = r + cpow(rv[i], 2)
+        r = csqrt(r)
 
         fv1 = &forces[p1 * dim_per_atom]
         fv2 = &forces[p2 * dim_per_atom]
@@ -395,14 +465,20 @@ cdef class HarmonicBond(Interaction):
         cdef AVALUE r0 = self._parameters[index * self._dparam]
         cdef AVALUE k = self._parameters[index * self._dparam + 1]
         cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *rv = system._resources.rv
         cdef AVALUE *configuration = &system._configuration[0]
 
-        r = _euclidean_distance(
-            &system._resources.rv[0],
+        system._pbc._pbc_distance(
+            rv,
             &configuration[p1 * dim_per_atom],
             &configuration[p2 * dim_per_atom],
             dim_per_atom
             )
+
+        r = 0
+        for i in range(dim_per_atom):
+            r = r + cpow(rv[i], 2)
+        r = csqrt(r)
 
         return 0.5 * k * cpow(r - r0, 2)
 
@@ -441,13 +517,6 @@ cdef class LJ(Interaction):
         cdef AVALUE *configuration = &system._configuration[0]
         cdef AVALUE *forces = &system._forces[0]
 
-        # r = _euclidean_distance(
-        #     &system._resources.rv[0],
-        #     &configuration[p1 * dim_per_atom],
-        #     &configuration[p2 * dim_per_atom],
-        #     dim_per_atom
-        #     )
-
         system._pbc._pbc_distance(
             rv,
             &configuration[p1 * dim_per_atom],
@@ -463,7 +532,7 @@ cdef class LJ(Interaction):
         fv1 = &forces[p1 * dim_per_atom]
         fv2 = &forces[p2 * dim_per_atom]
 
-        f = 24 * e * (2 * cpow(s, 12) / cpow(r, 13) - cpow(s, 6) / cpow(r, 7))
+        f = 24 * e/r * (2 * cpow(s / r, 12) - cpow(s / r, 6))
         for i in range(dim_per_atom):
             _f = f * rv[i] / r
             fv1[i] += _f
@@ -505,3 +574,11 @@ cdef class LJ(Interaction):
         e = csqrt(e1 * e2)
 
         return s, e
+
+
+cdef class CoulombPME(Interaction):
+    """
+    
+    Smeared out Gauss (alpha/sqrt(pi))**3 exp(-alpha**2 r**2)
+    """
+    pass
