@@ -316,15 +316,49 @@ cdef class ConstantBias(Interaction):
         """
 
         cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AVALUE *fv1
-        cdef AVALUE *b
-        cdef AVALUE *forces = &system._forces[0]
-
-        fv1 = &forces[p1 * system._dim_per_atom]
-        b = &self._parameters[index * self._dparam]
+        cdef AVALUE *fv1 = &system._forces[p1 * system._dim_per_atom]
+        cdef AVALUE *b = &self._parameters[index * self._dparam]
 
         for i in range(system._dim_per_atom):
             fv1[i] += b[i]
+
+    cdef AVALUE _get_energy_by_index(
+            self,
+            AINDEX index,
+            System system) nogil:
+
+        return 0
+
+
+cdef class Exclusion(Interaction):
+    """Constant force applied to a single atom in each dimension
+
+    On initialisation a list of parameter names should be given
+    that matches in length the number of dimensions per atom.
+    """
+
+    _default_index_names = ["p1"]
+    _default_param_names = []
+    _default_id = 10
+
+    cdef void _add_force_by_index(
+            self,
+            AINDEX index,
+            System system) nogil:
+        """Evaluate biasing force
+
+        Args:
+            index: Index of interaction
+            configuration: Pointer to atom position array
+            forces: Pointer to forces array.
+                Force in (kJ / (mol nm)).
+        """
+
+        cdef AINDEX p1 = self._indices[index * self._dindex]
+        cdef AVALUE *fv1 = &system._forces[p1 * system._dim_per_atom]
+
+        for i in range(system._dim_per_atom):
+            fv1[i] = 0
 
     cdef AVALUE _get_energy_by_index(
             self,
@@ -578,7 +612,6 @@ cdef class LJ(Interaction):
 
 cdef class CoulombPME(Interaction):
     """
-    
     Smeared out Gauss (alpha/sqrt(pi))**3 exp(-alpha**2 r**2)
     """
     pass

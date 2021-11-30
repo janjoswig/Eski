@@ -120,6 +120,9 @@ cdef class EulerIntegrator(Driver):
 
         with nogil:
             for index in prange(system._n_atoms):
+                if atoms[index].mass <= 0:
+                    continue
+
                 for d in range(dim_per_atom):
                     i = index * dim_per_atom + d
                     configuration[i] = (
@@ -169,6 +172,9 @@ cdef class EulerMaruyamaIntegrator(Driver):
 
         with nogil:
             for index in prange(system._n_atoms):
+                if atoms[index].mass <= 0:
+                    continue
+
                 sigma = csqrt(2 * 0.008314463 * T / atoms[index].mass / friction)
 
                 for d in range(dim_per_atom):
