@@ -28,5 +28,9 @@ cdef class EulerIntegrator(Driver):
     pass
 
 
+cdef class VerletIntegrator(Driver):
+    pass
+
+
 cdef class EulerMaruyamaIntegrator(Driver):
     pass

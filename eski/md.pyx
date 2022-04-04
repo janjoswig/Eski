@@ -2,6 +2,7 @@ import sys
 import warnings
 
 cimport cython
+from cython.parallel cimport prange
 import numpy as np
 
 from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
@@ -24,6 +25,7 @@ cdef class System:
             pbc=None,
             desc=None,
             copy=False):
+        """Init docstring"""
 
         if configuration.ndim == 2:
             n_atoms, dim_per_atom = configuration.shape
@@ -223,6 +225,28 @@ cdef class System:
 
         return energy
 
+    cpdef AVALUE kinetic_energy(self):
+        """Compute the current kinetic energy of the system"""
+
+        cdef AINDEX index, d, i
+        cdef AVALUE energy = 0
+        cdef AVALUE vnorm2
+
+        with nogil:
+
+            for index in prange(self._n_atoms):
+                if self._atoms[index].mass <= 0:
+                    continue
+
+                vnorm2 = 0
+                for d in range(self._dim_per_atom):
+                    i = index * self._dim_per_atom + d
+                    vnorm2 = vnorm2 + cpow(self._velocities[i], 2)
+
+                energy += 0.5 * self._atoms[index].mass * vnorm2
+
+        return energy
+
     cpdef void add_all_forces(self):
 
         cdef Interaction interaction
@@ -274,17 +298,12 @@ cdef class Resources:
 
     def __cinit__(self, System system, bint alloc_drivers=False):
 
-        cdef Py_ssize_t i
-
-        self.rv = <AVALUE*>malloc(
-            system._dim_per_atom * sizeof(AVALUE)
-            )
-
-        if self.rv == NULL:
-            raise MemoryError()
-
-        for i in range(system._dim_per_atom):
-            self.rv[i] = 0
+        self.rv = self.allocate_avalue_array(system._dim_per_atom)
+        self.rvb = self.allocate_avalue_array(system._dim_per_atom)
+        self.rvc = self.allocate_avalue_array(system._dim_per_atom)
+        self.der1 = self.allocate_avalue_array(system._dim_per_atom)
+        self.der2 = self.allocate_avalue_array(system._dim_per_atom)
+        self.der3 = self.allocate_avalue_array(system._dim_per_atom)
 
         if alloc_drivers:
             requirements = set(
@@ -302,12 +321,29 @@ cdef class Resources:
         else:
             self.configuration_b = np.array([])
 
-
-
     def __dealloc__(self):
 
-        if self.rv != NULL:
-            free(self.rv)
+        if self.rv != NULL: free(self.rv)
+        if self.rvb != NULL: free(self.rvb)
+        if self.rvc != NULL: free(self.rvc)
+        if self.der1 != NULL: free(self.der1)
+        if self.der2 != NULL: free(self.der2)
+        if self.der3 != NULL: free(self.der3)
+
+    cdef AVALUE* allocate_avalue_array(self, AINDEX n):
+
+        cdef AVALUE *ptr
+        cdef AINDEX i
+
+        ptr = <AVALUE*>malloc(n * sizeof(AVALUE))
+
+        if ptr == NULL:
+            raise MemoryError()
+
+        for i in range(n):
+            ptr[i] = 0
+
+        return ptr
 
 
 cdef class Reporter:

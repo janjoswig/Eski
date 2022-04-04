@@ -1,7 +1,7 @@
 cimport numpy as np
 
 from libc.stdlib cimport malloc, free
-from libc.math cimport sqrt as csqrt, pow as cpow
+from libc.math cimport sqrt as csqrt, pow as cpow, acos as cacos, cos as ccos, sin as csin
 
 from eski.primitive_types cimport AINDEX, AVALUE, ABOOL
 from eski.md cimport System

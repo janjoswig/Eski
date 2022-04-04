@@ -1,6 +1,7 @@
 cimport numpy as np
 
 from libc.stdlib cimport malloc, free
+from libc.math cimport sqrt as csqrt, pow as cpow, log as clog
 
 from eski.primitive_types cimport AINDEX, AVALUE, ABOOL
 from eski.interactions cimport Interaction
@@ -12,8 +13,14 @@ from eski.pbc cimport PBCHandler, NoPBC
 cdef class Resources:
     cdef:
         AVALUE *rv
+        AVALUE *rvb
+        AVALUE *rvc
+        AVALUE *der1
+        AVALUE *der2
+        AVALUE *der3
         AVALUE[::1] configuration_b
 
+    cdef AVALUE* allocate_avalue_array(self, AINDEX n)
 
 cdef class System:
 
@@ -41,6 +48,7 @@ cdef class System:
     cdef void allocate_atoms(self)
     cdef void reset_forces(self) nogil
     cpdef AVALUE potential_energy(self)
+    cpdef AVALUE kinetic_energy(self)
     cpdef void add_all_forces(self)
     cpdef void simulate(self, Py_ssize_t n)
 
