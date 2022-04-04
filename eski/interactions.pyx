@@ -441,6 +441,7 @@ cdef class HarmonicBond(Interaction):
     _default_id = 1
 
     def __init__(self, *args, **kwargs):
+        """Connects two particles with parameters r0 and k"""
         super().__init__(*args, **kwargs)
 
     cdef void _add_force_by_index(
@@ -482,7 +483,7 @@ cdef class HarmonicBond(Interaction):
         fv1 = &forces[p1 * dim_per_atom]
         fv2 = &forces[p2 * dim_per_atom]
 
-        f = -k * (r - r0)
+        f = -2 * k * (r - r0)
         for i in range(dim_per_atom):
             _f = f * system._resources.rv[i] / r
             fv1[i] += _f
@@ -514,7 +515,7 @@ cdef class HarmonicBond(Interaction):
             r = r + cpow(rv[i], 2)
         r = csqrt(r)
 
-        return 0.5 * k * cpow(r - r0, 2)
+        return k * cpow(r - r0, 2)
 
 
 cdef class LJ(Interaction):
