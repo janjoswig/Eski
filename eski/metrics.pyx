@@ -29,6 +29,17 @@ def random_gaussian():
     return _random_gaussian()
 
 
+cdef inline AVALUE _get_max(AVALUE *ptr, AINDEX n) nogil:
+    cdef AVALUE cmax = ptr[0]
+    cdef AINDEX i
+
+    for i in range(1, n):
+        if ptr[i] > cmax:
+            cmax = ptr[i]
+
+    return cmax
+
+
 cdef inline AVALUE _euclidean_distance(
         AVALUE *rvptr, AVALUE *p1ptr, AVALUE *p2ptr, AINDEX d) nogil:
     """Calculate euclidean distance in 3D

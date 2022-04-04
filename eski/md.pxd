@@ -9,8 +9,10 @@ from eski.atoms cimport Atom, InternalAtom, make_internal_atoms
 from eski.pbc cimport PBCHandler, NoPBC
 
 
-ctypedef struct Resources:
-    AVALUE *rv
+cdef class Resources:
+    cdef:
+        AVALUE *rv
+        AVALUE[::1] configuration_b
 
 
 cdef class System:
@@ -34,9 +36,9 @@ cdef class System:
         Resources _resources
         Py_ssize_t _step
         Py_ssize_t _target_step
+        bint _stop
 
     cdef void allocate_atoms(self)
-    cdef void allocate_resources(self)
     cdef void reset_forces(self) nogil
     cpdef AVALUE potential_energy(self)
     cpdef void add_all_forces(self)

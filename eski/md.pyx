@@ -1,3 +1,4 @@
+import sys
 import warnings
 
 cimport cython
@@ -120,12 +121,13 @@ cdef class System:
 
         self._step = 0
         self._target_step = 0
+        self._stop = False
 
         if desc is None:
             desc = ""
         self.desc = desc
 
-        self.allocate_resources()
+        self._resources = Resources(self)
 
     def __dealloc__(self):
         if self._atoms != NULL:
@@ -170,6 +172,10 @@ cdef class System:
     def target_step(self):
         return self._target_step
 
+    @property
+    def stop(self):
+        return self._stop
+
     def __repr__(self):
         if self.desc == "":
             desc_str = ""
@@ -192,21 +198,6 @@ cdef class System:
 
         if self._atoms == NULL:
             raise MemoryError()
-
-    cdef void allocate_resources(self):
-
-        cdef Py_ssize_t i
-        cdef AVALUE *rv = <AVALUE*>malloc(
-            self._dim_per_atom * sizeof(AVALUE)
-            )
-
-        if rv == NULL:
-            raise MemoryError()
-
-        for i in range(self._dim_per_atom):
-            rv[i] = 0
-
-        self._resources = Resources(rv)
 
     cdef inline void reset_forces(self) nogil:
         """Reinitialise force vector"""
@@ -252,9 +243,20 @@ cdef class System:
         cdef Driver driver
         cdef Reporter reporter
 
-        self._target_step += n
+        assert n >= 0
+
+        if n == 0:
+            self._target_step = sys.maxsize - 1
+        else:
+            self._target_step = self._step + n
+        self._stop = False
+
+        self._resources = Resources(self, alloc_drivers=True)
 
         for self._step in range(self._step + 1, self._target_step + 1):
+
+            if self._stop:
+                break
 
             for driver in self.drivers:
                 driver._update(self)
@@ -264,6 +266,48 @@ cdef class System:
             for reporter in self.reporters:
                 if (self._step % reporter.interval) == 0:
                     reporter.report(self)
+
+        self._resources = Resources(self)
+
+
+cdef class Resources:
+
+    def __cinit__(self, System system, bint alloc_drivers=False):
+
+        cdef Py_ssize_t i
+
+        self.rv = <AVALUE*>malloc(
+            system._dim_per_atom * sizeof(AVALUE)
+            )
+
+        if self.rv == NULL:
+            raise MemoryError()
+
+        for i in range(system._dim_per_atom):
+            self.rv[i] = 0
+
+        if alloc_drivers:
+            requirements = set(
+                entry
+                for driver in system.drivers
+                for entry in driver._resource_requirements
+                )
+
+            # TODO: Smarter per driver resource initialisation
+        else:
+            requirements = set()
+
+        if "configuration_b" in requirements:
+            self.configuration_b = np.zeros_like(system._configuration)
+        else:
+            self.configuration_b = np.array([])
+
+
+
+    def __dealloc__(self):
+
+        if self.rv != NULL:
+            free(self.rv)
 
 
 cdef class Reporter:

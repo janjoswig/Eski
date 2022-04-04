@@ -19,6 +19,7 @@ cdef class Driver:
     """
 
     _param_names = []
+    _resource_requirements = []
 
     def __cinit__(self, parameters: Iterable[float]):
 
@@ -88,6 +89,57 @@ cdef class Driver:
                 f"but {self._n_parameters} {numerus_given} given"
                 )
 
+
+cdef class SteepestDescentMinimiser(Driver):
+    """Local potential energy minimisation using a steepest-descent scheme
+    """
+
+    _param_names = ["tau", "tolerance"]
+    _resource_requirements = ["configuration_b"]
+
+    def __init__(self, *args, **kwargs):
+        """The default constructor takes the following parameters in
+        this exact order as a list of floats.
+
+        Parameters:
+            tau: step-size (nm).
+            tolerance: convergence is reached when (kJ / (mol nm))
+        """
+        self._dparam = 2
+        self._check_param_consistency()
+
+    cdef void _update(self, System system):
+
+        cdef AINDEX index, d, i
+        cdef AVALUE tau = self._parameters[0]
+        cdef AVALUE tolerance = self._parameters[1]
+
+        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef InternalAtom *atoms = system._atoms
+        cdef AVALUE *configuration = &system._configuration[0]
+        cdef AVALUE *forces = &system._forces[0]
+
+        cdef AVALUE max_f
+
+        system.add_all_forces()
+
+        with nogil:
+
+            max_f = _get_max(forces, system._n_atoms * dim_per_atom)
+            if max_f <= tolerance:
+                system._stop = True
+
+            else:
+
+                for index in prange(system._n_atoms):
+                    for d in range(dim_per_atom):
+                        i = index * dim_per_atom + d
+                        configuration[i] = (
+                            configuration[i]
+                            + forces[i] / max_f * tau
+                            )
+
+        # TODO: trial configuration, accept, reject, adjust tau
 
 cdef class EulerIntegrator(Driver):
     """Propagate positions and velocities with a forward Euler scheme
