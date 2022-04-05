@@ -8,6 +8,9 @@ import numpy as np
 from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
 
 
+cdef Constants constants = make_constants()
+
+
 cdef class System:
     """Representing a simulated (molecular) system"""
 
@@ -66,6 +69,8 @@ cdef class System:
         if atoms is not None:
             assert len(atoms) == n_atoms
             make_internal_atoms(atoms, self._atoms)
+            self._total_mass = self._get_total_mass()
+
         else:
             warnings.warn(
                 "No `atoms` provided. "
@@ -73,6 +78,8 @@ cdef class System:
                 "May not be available.",
                 RuntimeWarning
                 )
+            self._atoms = NULL
+            self._total_mass = 0
 
         if velocities is None:
             velocities = np.zeros_like(self._configuration)
@@ -163,6 +170,10 @@ cdef class System:
         return self._dim_per_atom
 
     @property
+    def total_mass(self):
+        return self._total_mass
+
+    @property
     def bounds(self):
         return np.asarray(self._bounds)
 
@@ -200,6 +211,15 @@ cdef class System:
 
         if self._atoms == NULL:
             raise MemoryError()
+
+    cpdef AVALUE _get_total_mass(self):
+        cdef AINDEX i
+        cdef AVALUE total_mass = 0
+
+        for i in range(self._n_atoms):
+            total_mass += self._atoms[i].mass
+
+        return total_mass
 
     cdef inline void reset_forces(self) nogil:
         """Reinitialise force vector"""
@@ -246,6 +266,22 @@ cdef class System:
                 energy += 0.5 * self._atoms[index].mass * vnorm2
 
         return energy
+
+    cdef AVALUE _temperature(self, AVALUE ekin, AVALUE dof):
+        "Compute current system temperature"
+
+        if ekin < 0:
+            ekin = self.kinetic_energy()
+
+        if dof <= 0:
+            dof = 1
+
+        return (2 * ekin) / (dof * constants.R) / 1000
+
+    def temperature(self, ekin=None, dof=None):
+        if ekin is None: ekin = -1
+        if dof is None: dof = -1
+        return self._temperature(ekin, dof)
 
     cpdef void add_all_forces(self):
 

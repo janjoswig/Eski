@@ -4,6 +4,7 @@ from libc.stdlib cimport malloc, free
 from libc.math cimport sqrt as csqrt, pow as cpow, log as clog
 
 from eski.primitive_types cimport AINDEX, AVALUE, ABOOL
+from eski.primitive_types cimport Constants, make_constants
 from eski.interactions cimport Interaction
 from eski.drivers cimport Driver
 from eski.atoms cimport Atom, InternalAtom, make_internal_atoms
@@ -39,6 +40,7 @@ cdef class System:
         AINDEX _n_atoms
         AINDEX _n_dim
         AINDEX  _dim_per_atom
+        AVALUE _total_mass
         InternalAtom *_atoms
         Resources _resources
         Py_ssize_t _step
@@ -49,8 +51,10 @@ cdef class System:
     cdef void reset_forces(self) nogil
     cpdef AVALUE potential_energy(self)
     cpdef AVALUE kinetic_energy(self)
+    cdef AVALUE _temperature(self, AVALUE ekin, AVALUE dof)
     cpdef void add_all_forces(self)
     cpdef void simulate(self, Py_ssize_t n)
+    cpdef AVALUE _get_total_mass(self)
 
 
 cdef class Reporter:

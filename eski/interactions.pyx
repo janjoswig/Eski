@@ -599,6 +599,142 @@ cdef class HarmonicAngle(Interaction):
         fv2 = &forces[p2 * dim_per_atom]
         fv3 = &forces[p3 * dim_per_atom]
 
+        f = -k * (cacos(cos_theta) - theta0)
+        for i in range(dim_per_atom):
+            fv1[i] += f * der1[i]
+            fv2[i] += f * der2[i]
+            fv3[i] += f * der3[i]
+
+    cdef AVALUE _get_energy_by_index(
+            self,
+            AINDEX index,
+            System system) nogil:
+
+        cdef AINDEX i
+        cdef AVALUE r, rb
+        cdef AINDEX p1 = self._indices[index * self._dindex]
+        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
+        cdef AINDEX p3 = self._indices[index * self._dindex + 2]
+        cdef AVALUE theta0 = self._parameters[index * self._dparam]
+        cdef AVALUE k = self._parameters[index * self._dparam + 1]
+        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *rv = system._resources.rv
+        cdef AVALUE *rvb = system._resources.rvb
+        cdef AVALUE *configuration = &system._configuration[0]
+        cdef AVALUE cos_theta
+
+        system._pbc._pbc_distance(
+            rv,
+            &configuration[p1 * dim_per_atom],
+            &configuration[p2 * dim_per_atom],
+            dim_per_atom
+            )
+
+        r = 0
+        for i in range(dim_per_atom):
+            r = r + cpow(rv[i], 2)
+        r = csqrt(r)
+
+        system._pbc._pbc_distance(
+            rvb,
+            &configuration[p3 * dim_per_atom],
+            &configuration[p2 * dim_per_atom],
+            dim_per_atom
+            )
+
+        rb = 0
+        for i in range(dim_per_atom):
+            rb = rb + cpow(rvb[i], 2)
+        rb = csqrt(rb)
+
+        cos_theta = 0
+        for i in range(dim_per_atom):
+            cos_theta = cos_theta + (rv[i] / r) * (rvb[i] / rb)
+
+        return 0.5 * k * cpow(cacos(cos_theta) - theta0, 2)
+
+
+cdef class CosineHarmonicAngle(Interaction):
+    """Harmonic force approximating a valence angle"""
+
+    _default_index_names = ["p1", "p2", "p3"]
+    _default_param_names = ["costheta0", "k"]
+    _default_id = 1
+
+    def __init__(self, *args, **kwargs):
+        """Connects three particles with parameters theta0 and k"""
+        super().__init__(*args, **kwargs)
+
+    cdef void _add_force_by_index(
+            self,
+            AINDEX index,
+            System system) nogil:
+        """Evaluate harmonic bond force
+
+        Args:
+            index: Index of interaction
+            system: :class:`eski.md.System`
+        """
+
+        cdef AINDEX i
+        cdef AVALUE r, rb, f
+        cdef AINDEX p1 = self._indices[index * self._dindex]
+        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
+        cdef AINDEX p3 = self._indices[index * self._dindex + 2]
+        cdef AVALUE theta0 = self._parameters[index * self._dparam]
+        cdef AVALUE k = self._parameters[index * self._dparam + 1]
+        cdef AVALUE *fv1
+        cdef AVALUE *fv2
+        cdef AVALUE *fv3
+        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *rv = system._resources.rv
+        cdef AVALUE *rvb = system._resources.rvb
+        cdef AVALUE *configuration = &system._configuration[0]
+        cdef AVALUE *forces = &system._forces[0]
+        cdef AVALUE cos_theta, sin_inv
+        cdef AVALUE *der1 = system._resources.der1
+        cdef AVALUE *der2 = system._resources.der2
+        cdef AVALUE *der3 = system._resources.der3
+
+        system._pbc._pbc_distance(
+            rv,
+            &configuration[p1 * dim_per_atom],
+            &configuration[p2 * dim_per_atom],
+            dim_per_atom
+            )
+
+        r = 0
+        for i in range(dim_per_atom):
+            r = r + cpow(rv[i], 2)
+        r = csqrt(r)
+
+        system._pbc._pbc_distance(
+            rvb,
+            &configuration[p3 * dim_per_atom],
+            &configuration[p2 * dim_per_atom],
+            dim_per_atom
+            )
+
+        rb = 0
+        for i in range(dim_per_atom):
+            rb = rb + cpow(rvb[i], 2)
+        rb = csqrt(rb)
+
+        cos_theta = 0
+        for i in range(dim_per_atom):
+            cos_theta = cos_theta + (rv[i] / r) * ( rvb[i] / rb)
+
+        sin_inv = 1.0 / csqrt(1.0 - cos_theta * cos_theta)
+
+        for i in range(dim_per_atom):
+            der1[i] = sin_inv * (cos_theta  * (rv[i] / r) - (rvb[i] / rb)) / r
+            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rv[i] / r)) / rb
+            der2[i] = -(der1[i] + der3[i])
+
+        fv1 = &forces[p1 * dim_per_atom]
+        fv2 = &forces[p2 * dim_per_atom]
+        fv3 = &forces[p3 * dim_per_atom]
+
         f = k * (cos_theta - theta0) * csin(cacos(cos_theta))
         for i in range(dim_per_atom):
             fv1[i] += f * der1[i]
