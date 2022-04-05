@@ -4,6 +4,7 @@ from typing import Optional, Iterable
 import numpy as np
 
 from eski.atoms import Atom
+from eski.md import System
 
 
 @dataclass
@@ -30,7 +31,7 @@ dummy = Model(
 argon2D = Model(
     configuration=np.array([0., 0.]),
     velocities=None,
-    desc="One lonely argon atom",
+    desc="One lonely argon atom in 2D",
     atoms=[(("Ar", ), {"mass": 40})]
 )
 
@@ -40,7 +41,7 @@ argon_pair3D = Model(
         [1., 0., 0.]
         ]),
     velocities=None,
-    desc="One lonely argon atom",
+    desc="Two argon atoms 3D",
     atoms=[(("Ar", ), {"mass": 40}), (("Ar", ), {"mass": 40})]
 )
 
@@ -49,3 +50,17 @@ registered_systems = {
     "Argon2D": argon2D,
     "Argon_pair3D": argon_pair3D
 }
+
+
+def system_from_model(model):
+    if isinstance(model, str):
+        model = registered_systems[model]
+
+    system = System(
+        model.configuration,
+        velocities=model.velocities,
+        desc=model.desc,
+        atoms=model.make_Atoms()
+    )
+
+    return system
