@@ -116,6 +116,8 @@ cdef class System:
             custom_interactions = []
         self.custom_interactions = custom_interactions
 
+        self.set_dof()
+
         if drivers is None:
             drivers = []
         self.drivers = drivers
@@ -204,6 +206,27 @@ cdef class System:
 
         return f"{self.__class__.__name__}({desc_str}{atoms_str}{dim_str})"
 
+    @property
+    def dof(self):
+        return self._dof
+
+    @dof.setter
+    def dof(self, v):
+        self._dof = v
+
+    def set_dof(
+            self, remove_com_trans=True, remove_com_rot=False,
+            check_constraints=False):
+
+        self._dof = 3 * self._n_atoms
+        if remove_com_trans:
+            self.dof -= 3
+
+        if remove_com_rot:
+            self.dof -= 3
+
+        # TODO: check for constrained interactions
+
     cdef void allocate_atoms(self):
         self._atoms = <InternalAtom*>malloc(
             self._n_atoms * sizeof(InternalAtom)
@@ -220,6 +243,58 @@ cdef class System:
             total_mass += self._atoms[i].mass
 
         return total_mass
+
+    cdef inline void _remove_com_velocity(self) nogil:
+        cdef AINDEX index, d, i
+        cdef AVALUE *com_velocity = <AVALUE*>malloc(
+            self._dim_per_atom * sizeof(AVALUE)
+            )
+
+        if com_velocity == NULL:
+            raise MemoryError()
+
+        for index in prange(self._n_atoms):
+            for d in range(self._dim_per_atom):
+                i = index * self._dim_per_atom + d
+
+                com_velocity[d] = com_velocity[d] + self._velocities[i] * self._atoms[i].mass / self._total_mass
+
+        for index in prange(self._n_atoms):
+            for d in range(self._dim_per_atom):
+                i = index * self._dim_per_atom + d
+
+                self._velocities[i] = self._velocities[i] - com_velocity[d]
+
+        free(com_velocity)
+
+    cdef void _generate_velocities(self, AVALUE T) nogil:
+        cdef AVALUE instant_temperature
+        cdef AVALUE scale_factor
+        cdef AVALUE sigma
+        cdef AINDEX index, d, i
+
+        for index in prange(self._n_atoms):
+
+            sigma = csqrt(constants.R * T / self._atoms[index].mass)
+
+            for d in range(self._dim_per_atom):
+                i = index * self._dim_per_atom + d
+
+                self._velocities[i] = _random_gaussian() * sigma
+
+        self._remove_com_velocity()
+
+        instant_temperature = self._temperature(-1)
+        scale_factor = csqrt(T / instant_temperature)
+
+        for index in prange(self._n_atoms):
+            for d in range(self._dim_per_atom):
+                i = index * self._dim_per_atom + d
+
+                self._velocities[i] = self._velocities[i] * scale_factor
+
+    def generate_velocities(self, T=300):
+        self._generate_velocities(T)
 
     cdef inline void reset_forces(self) nogil:
         """Reinitialise force vector"""
@@ -245,43 +320,40 @@ cdef class System:
 
         return energy
 
-    cpdef AVALUE kinetic_energy(self):
+    cdef AVALUE _kinetic_energy(self) nogil:
         """Compute the current kinetic energy of the system"""
 
         cdef AINDEX index, d, i
         cdef AVALUE energy = 0
         cdef AVALUE vnorm2
 
-        with nogil:
+        for index in prange(self._n_atoms):
+            if self._atoms[index].mass <= 0:
+                continue
 
-            for index in prange(self._n_atoms):
-                if self._atoms[index].mass <= 0:
-                    continue
+            vnorm2 = 0
+            for d in range(self._dim_per_atom):
+                i = index * self._dim_per_atom + d
+                vnorm2 = vnorm2 + cpow(self._velocities[i], 2)
 
-                vnorm2 = 0
-                for d in range(self._dim_per_atom):
-                    i = index * self._dim_per_atom + d
-                    vnorm2 = vnorm2 + cpow(self._velocities[i], 2)
-
-                energy += 0.5 * self._atoms[index].mass * vnorm2
+            energy += 0.5 * self._atoms[index].mass * vnorm2
 
         return energy
 
-    cdef AVALUE _temperature(self, AVALUE ekin, AVALUE dof):
+    def kinetic_energy(self):
+        return self._kinetic_energy()
+
+    cdef AVALUE _temperature(self, AVALUE ekin) nogil:
         "Compute current system temperature"
 
         if ekin < 0:
-            ekin = self.kinetic_energy()
+            ekin = self._kinetic_energy()
 
-        if dof <= 0:
-            dof = 1
+        return (2 * ekin) / (self._dof * constants.R)
 
-        return (2 * ekin) / (dof * constants.R) / 1000
-
-    def temperature(self, ekin=None, dof=None):
+    def temperature(self, ekin=None):
         if ekin is None: ekin = -1
-        if dof is None: dof = -1
-        return self._temperature(ekin, dof)
+        return self._temperature(ekin)
 
     cpdef void add_all_forces(self):
 

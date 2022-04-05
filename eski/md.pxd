@@ -9,6 +9,7 @@ from eski.interactions cimport Interaction
 from eski.drivers cimport Driver
 from eski.atoms cimport Atom, InternalAtom, make_internal_atoms
 from eski.pbc cimport PBCHandler, NoPBC
+from eski.metrics cimport _random_gaussian
 
 
 cdef class Resources:
@@ -41,6 +42,7 @@ cdef class System:
         AINDEX _n_dim
         AINDEX  _dim_per_atom
         AVALUE _total_mass
+        AINDEX _dof
         InternalAtom *_atoms
         Resources _resources
         Py_ssize_t _step
@@ -50,11 +52,13 @@ cdef class System:
     cdef void allocate_atoms(self)
     cdef void reset_forces(self) nogil
     cpdef AVALUE potential_energy(self)
-    cpdef AVALUE kinetic_energy(self)
-    cdef AVALUE _temperature(self, AVALUE ekin, AVALUE dof)
+    cdef AVALUE _kinetic_energy(self) nogil
+    cdef AVALUE _temperature(self, AVALUE ekin) nogil
     cpdef void add_all_forces(self)
     cpdef void simulate(self, Py_ssize_t n)
     cpdef AVALUE _get_total_mass(self)
+    cdef void _remove_com_velocity(self) nogil
+    cdef void _generate_velocities(self, AVALUE T) nogil
 
 
 cdef class Reporter:

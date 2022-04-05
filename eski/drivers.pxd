@@ -5,6 +5,7 @@ from libc.math cimport sqrt as csqrt, pow as cpow, log as clog
 from libc.math cimport fmax
 
 from eski.primitive_types cimport AINDEX, AVALUE
+from eski.primitive_types cimport Constants, make_constants
 from eski.atoms cimport InternalAtom, make_internal_atoms
 from eski.md cimport System
 from eski.metrics cimport _random_gaussian, _get_max

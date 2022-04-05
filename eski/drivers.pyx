@@ -7,6 +7,9 @@ import numpy as np
 from eski.primitive_types import P_AINDEX, P_AVALUE
 
 
+cdef Constants constants = make_constants()
+
+
 cdef class Driver:
     """Base class for drivers to propagate
 
@@ -227,7 +230,7 @@ cdef class EulerMaruyamaIntegrator(Driver):
                 if atoms[index].mass <= 0:
                     continue
 
-                sigma = csqrt(2 * 0.008314463 * T / atoms[index].mass / friction)
+                sigma = csqrt(2 * constants.R * T / atoms[index].mass / friction)
 
                 for d in range(dim_per_atom):
                     i = index * dim_per_atom + d
