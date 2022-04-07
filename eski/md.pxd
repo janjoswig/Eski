@@ -60,7 +60,7 @@ cdef class System:
     cdef AVALUE _kinetic_energy(self) nogil
     cdef AVALUE _temperature(self, AVALUE ekin) nogil
     cpdef void add_all_forces(self)
-    cpdef void simulate(self, Py_ssize_t n)
+    cdef void _simulate(self, Py_ssize_t n, bint reset_step)
     cpdef AVALUE _get_total_mass(self)
     cdef void _remove_com_velocity(self) nogil
     cdef void _generate_velocities(self, AVALUE T) nogil

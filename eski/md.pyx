@@ -381,13 +381,26 @@ cdef class System:
         for interaction in self.custom_interactions:
             interaction.add_all_forces(self)
 
-    cpdef void simulate(self, Py_ssize_t n):
+    def simulate(self, n, reset_step=False):
+        """Perform a number of MD simulation steps
+
+        Args:
+            n: number of steps (set to 0 for no limit)
+        Keyword args:
+            reset_step: reset cumulative step count to 0
+        """
+        self._simulate(n, reset_step)
+
+    cdef void _simulate(self, Py_ssize_t n, bint reset_step):
         """Perform a number of MD simulation steps"""
 
         cdef Interaction interaction
         cdef object custom_interaction
         cdef Driver driver
         cdef Reporter reporter
+
+        if reset_step:
+            self._step = 0
 
         assert n >= 0
 
