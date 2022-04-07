@@ -19,6 +19,7 @@ cdef class Driver:
         AINDEX _n_parameters
 
     cdef void _update(self, System system)
+    cdef void _on_startup(self, System system)
 
 
 cdef class SteepestDescentMinimiser(Driver):

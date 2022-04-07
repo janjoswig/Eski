@@ -34,3 +34,14 @@ def test_random_gaussian():
 
     more_numbers = np.array([metrics.random_gaussian() for _ in range(10000)])
     assert not np.array_equal(numbers, more_numbers)
+
+
+@pytest.mark.parametrize(
+    "a,expected",
+    [
+        ([1, 2, 3, 4, 5], 5),
+        ([-1.3, 0.4, 1.76], 1.76)
+    ]
+)
+def test_get_max(a, expected):
+    assert metrics.get_max(np.array(a, dtype=np.float64)) == expected

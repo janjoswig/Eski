@@ -92,12 +92,14 @@ cdef class Driver:
                 f"but {self._n_parameters} {numerus_given} given"
                 )
 
+    cdef void _on_startup(self, System system): ...
+
 
 cdef class SteepestDescentMinimiser(Driver):
     """Local potential energy minimisation using a steepest-descent scheme
     """
 
-    _param_names = ["tau", "tolerance"]
+    _param_names = ["tau", "tolerance", "tuneup", "tunedown"]
     _resource_requirements = ["configuration_b"]
 
     def __init__(self, *args, **kwargs):
@@ -107,42 +109,65 @@ cdef class SteepestDescentMinimiser(Driver):
         Parameters:
             tau: step-size (nm).
             tolerance: convergence is reached when (kJ / (mol nm))
+            tuneup: factor by which to increase tau on accepted step
+            tunelow: factor by which to decrease tau on rejected step
         """
-        self._dparam = 2
+        self._dparam = 4
         self._check_param_consistency()
+
+    cdef void _on_startup(self, System system):
+        system._resources.configuration = np.zeros_like(
+            system._configuration,
+            dtype=P_AVALUE,
+            order="c"
+            )
+        system._resources.prev_epot = system.potential_energy()
+        system._resources.adjusted_tau_steep = self._parameters[0]
+
 
     cdef void _update(self, System system):
 
         cdef AINDEX index, d, i
-        cdef AVALUE tau = self._parameters[0]
+        cdef AVALUE tau = system._resources.adjusted_tau_steep
         cdef AVALUE tolerance = self._parameters[1]
-
-        cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef InternalAtom *atoms = system._atoms
-        cdef AVALUE *configuration = &system._configuration[0]
-        cdef AVALUE *forces = &system._forces[0]
-
+        cdef AVALUE tuneup = self._parameters[2]
+        cdef AVALUE tunedown = self._parameters[3]
+        cdef AVALUE *trial_configuration = &system._resources.configuration[0]
         cdef AVALUE max_f
+        cdef AVALUE epot
 
         system.add_all_forces()
 
         with nogil:
 
-            max_f = _get_max(forces, system._n_atoms * dim_per_atom)
+            max_f = _get_max(system._forces_ptr, system._n_atoms * system._dim_per_atom)
             if max_f <= tolerance:
                 system._stop = True
-
             else:
-
                 for index in prange(system._n_atoms):
-                    for d in range(dim_per_atom):
-                        i = index * dim_per_atom + d
-                        configuration[i] = (
-                            configuration[i]
-                            + forces[i] / max_f * tau
+                    for d in range(system._dim_per_atom):
+                        i = index * system._dim_per_atom + d
+                        trial_configuration[i] = (
+                            system._configuration[i]
+                            + system._forces[i] / max_f * tau
                             )
 
-        # TODO: trial configuration, accept, reject, adjust tau
+            system._configuration_ptr = trial_configuration
+
+        epot = system.potential_energy()
+
+        if epot < system._resources.prev_epot:
+            system._resources.adjusted_tau_steep *= tuneup
+            system._resources.prev_epot = epot
+
+            with nogil:
+                for i in prange(system._n_dim):
+                    system._configuration[i] = trial_configuration[i]
+        else:
+            system._resources.adjusted_tau_steep *= tunedown
+
+        system._configuration_ptr = &system._configuration[0]
+
 
 cdef class EulerIntegrator(Driver):
     """Propagate positions and velocities with a forward Euler scheme

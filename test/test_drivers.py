@@ -1,7 +1,8 @@
 import numpy as np
+from sklearn import metrics
 import pytest
 
-from eski import atoms, drivers, md
+from eski import atoms, drivers, interactions, md, metrics
 
 
 class TestDriver:
@@ -15,6 +16,8 @@ class TestDriver:
                 marks=pytest.mark.raises(exception=ValueError)
                 ),
             (drivers.EulerIntegrator, [0.1]),
+            (drivers.EulerMaruyamaIntegrator, [0.1, 0.001, 300]),
+            (drivers.SteepestDescentMinimiser, [0.01, 100, 1.2, 0.2])
         ]
     )
     def test_create(self, driver_type, parameters, file_regression):
@@ -26,6 +29,8 @@ class TestDriver:
         [
             (drivers.Driver, {}),
             (drivers.EulerIntegrator, {"dt": 0.1}),
+            (drivers.EulerMaruyamaIntegrator, {"dt": 0.1, "friction": 0.001, "T": 300}),
+            (drivers.SteepestDescentMinimiser, {"tau": 0.01, "tolerance": 100, "tuneup": 1.2, "tunedown": 0.2})
         ]
     )
     def test_create_from_mapping(self, driver_type, parameters):
@@ -71,3 +76,26 @@ class TestDriver:
             "configuration": system.configuration,
             "velocities": system.velocities,
             })
+
+    def test_steepest_descent_water(self):
+        atom_list = [
+            atoms.Atom("O", mass=16),
+            atoms.Atom("H", mass=1),
+            atoms.Atom("H", mass=1)
+        ]
+
+        water = md.System(
+            np.array([0, 0, 0, 0.12, 0, 0, 0, 0.1, 0], dtype=float),
+            dim_per_atom=3,
+            atoms=atom_list,
+            interactions=[
+                interactions.HarmonicBond([0, 1, 0, 2], [0.09572, 462750.4, 0.09572, 462750.4]),
+                interactions.HarmonicAngle([1, 0, 2], [np.radians(104.520), 836.800])
+                ],
+            drivers=[drivers.SteepestDescentMinimiser([0.01, 10, 1.2, 0.2])]
+            )
+
+        water.simulate(0)
+        assert water.potential_energy() < 0.001
+        assert np.isclose(water.distance(0, 1), 0.09572, atol=1e-4)
+        assert np.isclose(water.distance(0, 2), 0.09572, atol=1e-4)

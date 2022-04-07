@@ -40,9 +40,22 @@ cdef inline AVALUE _get_max(AVALUE *ptr, AINDEX n) nogil:
     return cmax
 
 
+def get_max(a):
+    """Finds the maximum value in an array
+
+    Args:
+        a: Array-like
+
+    Returns:
+        Maximum
+    """
+    cdef AVALUE[::1] aview = a
+    return _get_max(&aview[0], a.shape[0])
+
+
 cdef inline AVALUE _euclidean_distance(
         AVALUE *rvptr, AVALUE *p1ptr, AVALUE *p2ptr, AINDEX d) nogil:
-    """Calculate euclidean distance in 3D
+    """Calculate euclidean distance
 
     Args:
        rvptr: Pointer to output distance vector array.
@@ -64,7 +77,7 @@ cdef inline AVALUE _euclidean_distance(
 
 
 def euclidean_distance(p1, p2):
-    """Calculate euclidean distance in 3D
+    """Calculate euclidean distance between two vectors
 
     Args:
        p1: Array-like coordinates of point 1

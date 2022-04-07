@@ -9,18 +9,21 @@ from eski.interactions cimport Interaction
 from eski.drivers cimport Driver
 from eski.atoms cimport Atom, InternalAtom, make_internal_atoms
 from eski.pbc cimport PBCHandler, NoPBC
-from eski.metrics cimport _random_gaussian
+from eski.metrics cimport _random_gaussian, _euclidean_distance
 
 
 cdef class Resources:
     cdef:
-        AVALUE *rv
+        AVALUE *rva
         AVALUE *rvb
         AVALUE *rvc
         AVALUE *der1
         AVALUE *der2
         AVALUE *der3
-        AVALUE[::1] configuration_b
+        AVALUE *com_velocity
+        AVALUE[::1] configuration
+        AVALUE prev_epot
+        AVALUE adjusted_tau_steep
 
     cdef AVALUE* allocate_avalue_array(self, AINDEX n)
 
@@ -36,8 +39,11 @@ cdef class System:
 
     cdef:
         AVALUE[::1] _configuration
+        AVALUE *_configuration_ptr
         AVALUE[::1] _velocities
+        AVALUE *_velocities_ptr
         AVALUE[::1] _forces
+        AVALUE *_forces_ptr
         AINDEX _n_atoms
         AINDEX _n_dim
         AINDEX  _dim_per_atom
@@ -59,6 +65,7 @@ cdef class System:
     cpdef AVALUE _get_total_mass(self)
     cdef void _remove_com_velocity(self) nogil
     cdef void _generate_velocities(self, AVALUE T) nogil
+    cpdef void reset_resources(self)
 
 
 cdef class Reporter:

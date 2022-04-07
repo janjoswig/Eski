@@ -57,6 +57,7 @@ cdef class System:
             dtype=P_AVALUE,
             order="c"
             )
+        self._configuration_ptr =  &self._configuration[0]
 
         n_dim = self._configuration.shape[0]
         assert n_dim  == n_atoms * dim_per_atom, "Number of dimensions does not match dimensions per atoms"
@@ -101,12 +102,14 @@ cdef class System:
             dtype=P_AVALUE,
             order="c"
             )
+        self._velocities_ptr =  &self._velocities[0]
 
         self._forces = np.zeros_like(
             configuration,
             dtype=P_AVALUE,
             order="c"
             )
+        self._forces_ptr =  &self._forces[0]
 
         if interactions is None:
             interactions = []
@@ -227,6 +230,24 @@ cdef class System:
 
         # TODO: check for constrained interactions
 
+    def distance(self, AINDEX a, AINDEX b):
+        """PBC distance between atoms with indices a and b"""
+
+        cdef AINDEX i
+        cdef AVALUE r = 0
+
+        self._pbc._pbc_distance(
+            self._resources.rva,
+            &self._configuration_ptr[a * self._dim_per_atom],
+            &self._configuration_ptr[b * self._dim_per_atom],
+            self._dim_per_atom
+            )
+
+        for i in range(self._dim_per_atom):
+            r += cpow(self._resources.rva[i], 2)
+
+        return csqrt(r)
+
     cdef void allocate_atoms(self):
         self._atoms = <InternalAtom*>malloc(
             self._n_atoms * sizeof(InternalAtom)
@@ -246,12 +267,7 @@ cdef class System:
 
     cdef inline void _remove_com_velocity(self) nogil:
         cdef AINDEX index, d, i
-        cdef AVALUE *com_velocity = <AVALUE*>malloc(
-            self._dim_per_atom * sizeof(AVALUE)
-            )
-
-        if com_velocity == NULL:
-            raise MemoryError()
+        cdef AVALUE *com_velocity = self._resources.com_velocity
 
         for index in prange(self._n_atoms):
             for d in range(self._dim_per_atom):
@@ -264,8 +280,6 @@ cdef class System:
                 i = index * self._dim_per_atom + d
 
                 self._velocities[i] = self._velocities[i] - com_velocity[d]
-
-        free(com_velocity)
 
     cdef void _generate_velocities(self, AVALUE T) nogil:
         cdef AVALUE instant_temperature
@@ -383,7 +397,8 @@ cdef class System:
             self._target_step = self._step + n
         self._stop = False
 
-        self._resources = Resources(self, alloc_drivers=True)
+        for driver in self.drivers:
+            driver._on_startup(self)
 
         for self._step in range(self._step + 1, self._target_step + 1):
 
@@ -399,44 +414,38 @@ cdef class System:
                 if (self._step % reporter.interval) == 0:
                     reporter.report(self)
 
+        self.reset_resources()
+
+    cpdef void reset_resources(self):
         self._resources = Resources(self)
 
 
 cdef class Resources:
 
-    def __cinit__(self, System system, bint alloc_drivers=False):
+    def __cinit__(self, System system):
 
-        self.rv = self.allocate_avalue_array(system._dim_per_atom)
+        self.rva = self.allocate_avalue_array(system._dim_per_atom)
         self.rvb = self.allocate_avalue_array(system._dim_per_atom)
         self.rvc = self.allocate_avalue_array(system._dim_per_atom)
         self.der1 = self.allocate_avalue_array(system._dim_per_atom)
         self.der2 = self.allocate_avalue_array(system._dim_per_atom)
         self.der3 = self.allocate_avalue_array(system._dim_per_atom)
+        self.com_velocity = self.allocate_avalue_array(system._dim_per_atom)
 
-        if alloc_drivers:
-            requirements = set(
-                entry
-                for driver in system.drivers
-                for entry in driver._resource_requirements
-                )
+        self.configuration = np.array([])
 
-            # TODO: Smarter per driver resource initialisation
-        else:
-            requirements = set()
-
-        if "configuration_b" in requirements:
-            self.configuration_b = np.zeros_like(system._configuration)
-        else:
-            self.configuration_b = np.array([])
+        self.prev_epot = 0
+        self.adjusted_tau_steep = 0
 
     def __dealloc__(self):
 
-        if self.rv != NULL: free(self.rv)
+        if self.rva != NULL: free(self.rva)
         if self.rvb != NULL: free(self.rvb)
         if self.rvc != NULL: free(self.rvc)
         if self.der1 != NULL: free(self.der1)
         if self.der2 != NULL: free(self.der2)
         if self.der3 != NULL: free(self.der3)
+        if self.com_velocity != NULL: free(self.com_velocity)
 
     cdef AVALUE* allocate_avalue_array(self, AINDEX n):
 

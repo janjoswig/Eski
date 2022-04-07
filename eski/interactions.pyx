@@ -402,9 +402,9 @@ cdef class HarmonicPositionRestraint(Interaction):
         cdef AVALUE *anchor = &self._parameters[index * self._dparam + 2]
         cdef AVALUE *fv1
         cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *rv = system._resources.rv
-        cdef AVALUE *configuration = &system._configuration[0]
-        cdef AVALUE *forces = &system._forces[0]
+        cdef AVALUE *rv = system._resources.rva
+        cdef AVALUE *configuration = system._configuration_ptr
+        cdef AVALUE *forces = system._forces_ptr
 
         system._pbc._pbc_distance(
             rv,
@@ -423,7 +423,7 @@ cdef class HarmonicPositionRestraint(Interaction):
 
             f = -k * (r - r0)
             for i in range(dim_per_atom):
-                fv1[i] += f * system._resources.rv[i] / r
+                fv1[i] += f * rv[i] / r
 
     cdef AVALUE _get_energy_by_index(
             self,
@@ -464,9 +464,9 @@ cdef class HarmonicBond(Interaction):
         cdef AVALUE *fv1
         cdef AVALUE *fv2
         cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *rv = system._resources.rv
-        cdef AVALUE *configuration = &system._configuration[0]
-        cdef AVALUE *forces = &system._forces[0]
+        cdef AVALUE *rv = system._resources.rva
+        cdef AVALUE *configuration = system._configuration_ptr
+        cdef AVALUE *forces = system._forces_ptr
 
         system._pbc._pbc_distance(
             rv,
@@ -499,9 +499,9 @@ cdef class HarmonicBond(Interaction):
         cdef AINDEX p2 = self._indices[index * self._dindex + 1]
         cdef AVALUE r0 = self._parameters[index * self._dparam]
         cdef AVALUE k = self._parameters[index * self._dparam + 1]
+        cdef AVALUE *configuration = system._configuration_ptr
         cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *rv = system._resources.rv
-        cdef AVALUE *configuration = &system._configuration[0]
+        cdef AVALUE *rv = system._resources.rva
 
         system._pbc._pbc_distance(
             rv,
@@ -551,17 +551,17 @@ cdef class HarmonicAngle(Interaction):
         cdef AVALUE *fv2
         cdef AVALUE *fv3
         cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *rv = system._resources.rv
+        cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
-        cdef AVALUE *configuration = &system._configuration[0]
-        cdef AVALUE *forces = &system._forces[0]
+        cdef AVALUE *configuration = system._configuration_ptr
+        cdef AVALUE *forces = system._forces_ptr
         cdef AVALUE cos_theta, sin_inv
         cdef AVALUE *der1 = system._resources.der1
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
         system._pbc._pbc_distance(
-            rv,
+            rva,
             &configuration[p1 * dim_per_atom],
             &configuration[p2 * dim_per_atom],
             dim_per_atom
@@ -569,7 +569,7 @@ cdef class HarmonicAngle(Interaction):
 
         r = 0
         for i in range(dim_per_atom):
-            r = r + cpow(rv[i], 2)
+            r = r + cpow(rva[i], 2)
         r = csqrt(r)
 
         system._pbc._pbc_distance(
@@ -586,13 +586,13 @@ cdef class HarmonicAngle(Interaction):
 
         cos_theta = 0
         for i in range(dim_per_atom):
-            cos_theta = cos_theta + (rv[i] / r) * ( rvb[i] / rb)
+            cos_theta = cos_theta + (rva[i] / r) * ( rvb[i] / rb)
 
         sin_inv = 1.0 / csqrt(1.0 - cos_theta * cos_theta)
 
         for i in range(dim_per_atom):
-            der1[i] = sin_inv * (cos_theta  * (rv[i] / r) - (rvb[i] / rb)) / r
-            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rv[i] / r)) / rb
+            der1[i] = sin_inv * (cos_theta  * (rva[i] / r) - (rvb[i] / rb)) / r
+            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rva[i] / r)) / rb
             der2[i] = -(der1[i] + der3[i])
 
         fv1 = &forces[p1 * dim_per_atom]
@@ -618,13 +618,13 @@ cdef class HarmonicAngle(Interaction):
         cdef AVALUE theta0 = self._parameters[index * self._dparam]
         cdef AVALUE k = self._parameters[index * self._dparam + 1]
         cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *rv = system._resources.rv
+        cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
-        cdef AVALUE *configuration = &system._configuration[0]
+        cdef AVALUE *configuration = system._configuration_ptr
         cdef AVALUE cos_theta
 
         system._pbc._pbc_distance(
-            rv,
+            rva,
             &configuration[p1 * dim_per_atom],
             &configuration[p2 * dim_per_atom],
             dim_per_atom
@@ -632,7 +632,7 @@ cdef class HarmonicAngle(Interaction):
 
         r = 0
         for i in range(dim_per_atom):
-            r = r + cpow(rv[i], 2)
+            r = r + cpow(rva[i], 2)
         r = csqrt(r)
 
         system._pbc._pbc_distance(
@@ -649,7 +649,7 @@ cdef class HarmonicAngle(Interaction):
 
         cos_theta = 0
         for i in range(dim_per_atom):
-            cos_theta = cos_theta + (rv[i] / r) * (rvb[i] / rb)
+            cos_theta = cos_theta + (rva[i] / r) * (rvb[i] / rb)
 
         return 0.5 * k * cpow(cacos(cos_theta) - theta0, 2)
 
@@ -687,17 +687,17 @@ cdef class CosineHarmonicAngle(Interaction):
         cdef AVALUE *fv2
         cdef AVALUE *fv3
         cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *rv = system._resources.rv
+        cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
-        cdef AVALUE *configuration = &system._configuration[0]
-        cdef AVALUE *forces = &system._forces[0]
+        cdef AVALUE *configuration = system._configuration_ptr
+        cdef AVALUE *forces = system._forces_ptr
         cdef AVALUE cos_theta, sin_inv
         cdef AVALUE *der1 = system._resources.der1
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
         system._pbc._pbc_distance(
-            rv,
+            rva,
             &configuration[p1 * dim_per_atom],
             &configuration[p2 * dim_per_atom],
             dim_per_atom
@@ -705,7 +705,7 @@ cdef class CosineHarmonicAngle(Interaction):
 
         r = 0
         for i in range(dim_per_atom):
-            r = r + cpow(rv[i], 2)
+            r = r + cpow(rva[i], 2)
         r = csqrt(r)
 
         system._pbc._pbc_distance(
@@ -722,13 +722,13 @@ cdef class CosineHarmonicAngle(Interaction):
 
         cos_theta = 0
         for i in range(dim_per_atom):
-            cos_theta = cos_theta + (rv[i] / r) * ( rvb[i] / rb)
+            cos_theta = cos_theta + (rva[i] / r) * ( rvb[i] / rb)
 
         sin_inv = 1.0 / csqrt(1.0 - cos_theta * cos_theta)
 
         for i in range(dim_per_atom):
-            der1[i] = sin_inv * (cos_theta  * (rv[i] / r) - (rvb[i] / rb)) / r
-            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rv[i] / r)) / rb
+            der1[i] = sin_inv * (cos_theta  * (rva[i] / r) - (rvb[i] / rb)) / r
+            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rva[i] / r)) / rb
             der2[i] = -(der1[i] + der3[i])
 
         fv1 = &forces[p1 * dim_per_atom]
@@ -754,13 +754,13 @@ cdef class CosineHarmonicAngle(Interaction):
         cdef AVALUE theta0 = self._parameters[index * self._dparam]
         cdef AVALUE k = self._parameters[index * self._dparam + 1]
         cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *rv = system._resources.rv
+        cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
-        cdef AVALUE *configuration = &system._configuration[0]
+        cdef AVALUE *configuration = system._configuration_ptr
         cdef AVALUE cos_theta
 
         system._pbc._pbc_distance(
-            rv,
+            rva,
             &configuration[p1 * dim_per_atom],
             &configuration[p2 * dim_per_atom],
             dim_per_atom
@@ -768,7 +768,7 @@ cdef class CosineHarmonicAngle(Interaction):
 
         r = 0
         for i in range(dim_per_atom):
-            r = r + cpow(rv[i], 2)
+            r = r + cpow(rva[i], 2)
         r = csqrt(r)
 
         system._pbc._pbc_distance(
@@ -785,7 +785,7 @@ cdef class CosineHarmonicAngle(Interaction):
 
         cos_theta = 0
         for i in range(dim_per_atom):
-            cos_theta = cos_theta + (rv[i] / r) * (rvb[i] / rb)
+            cos_theta = cos_theta + (rva[i] / r) * (rvb[i] / rb)
 
         return 0.5 * k * cpow(cos_theta - theta0, 2)
 
@@ -819,10 +819,10 @@ cdef class LJ(Interaction):
         cdef AVALUE e = self._parameters[index * self._dparam + 1]
         cdef AVALUE *fv1
         cdef AVALUE *fv2
-        cdef AVALUE *rv = system._resources.rv
+        cdef AVALUE *rv = system._resources.rva
         cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *configuration = &system._configuration[0]
-        cdef AVALUE *forces = &system._forces[0]
+        cdef AVALUE *configuration = system._configuration_ptr
+        cdef AVALUE *forces = system._forces_ptr
 
         system._pbc._pbc_distance(
             rv,
@@ -856,8 +856,8 @@ cdef class LJ(Interaction):
         cdef AVALUE s = self._parameters[index * self._dparam]
         cdef AVALUE e = self._parameters[index * self._dparam + 1]
         cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *configuration = &system._configuration[0]
-        cdef AVALUE *rv = system._resources.rv
+        cdef AVALUE *configuration = system._configuration_ptr
+        cdef AVALUE *rv = system._resources.rva
 
         system._pbc._pbc_distance(
             rv,

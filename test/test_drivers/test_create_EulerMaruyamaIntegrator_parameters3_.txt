@@ -1,0 +1,1 @@
+EulerMaruyamaIntegrator(dt=0.1, friction=0.001, T=300.0)
