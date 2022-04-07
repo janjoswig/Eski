@@ -13,6 +13,7 @@ cdef class Interaction:
     cdef public:
         AINDEX group
         AINDEX _id
+        bint requires_gil
     cdef:
         list _index_names
         list _param_names

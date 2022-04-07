@@ -22,7 +22,6 @@ cdef class System:
             velocities=None,
             atoms=None,
             interactions=None,
-            custom_interactions=None,
             drivers=None,
             reporters=None,
             pbc=None,
@@ -60,7 +59,7 @@ cdef class System:
         self._configuration_ptr =  &self._configuration[0]
 
         n_dim = self._configuration.shape[0]
-        assert n_dim  == n_atoms * dim_per_atom, "Number of dimensions does not match dimensions per atoms"
+        assert n_dim  == n_atoms * dim_per_atom, f"Number of dimensions ({n_dim}) does not match dimensions per atoms ({dim_per_atom})"
 
         self._n_atoms = n_atoms
         self._n_dim = n_dim
@@ -68,7 +67,7 @@ cdef class System:
         self.allocate_atoms()
 
         if atoms is not None:
-            assert len(atoms) == n_atoms
+            assert len(atoms) == n_atoms, f"Number of atoms in 'configuration' ({n_atoms}) and 'atoms' ({len(atoms)}) does not match"
             make_internal_atoms(atoms, self._atoms)
             self._total_mass = self._get_total_mass()
 
@@ -94,7 +93,7 @@ cdef class System:
                 f"but has dimensionality {velocities.ndim}"
                 )
 
-        assert velocities.shape[0] == configuration.shape[0]
+        assert velocities.shape[0] == configuration.shape[0], f"Shape of 'velocities' {velocities.shape} does not match 'configuration' {configuration.shape[0]}"
 
         self._velocities = np.array(
             velocities,
@@ -114,10 +113,6 @@ cdef class System:
         if interactions is None:
             interactions = []
         self.interactions = interactions
-
-        if custom_interactions is None:
-            custom_interactions = []
-        self.custom_interactions = custom_interactions
 
         self.set_dof()
 
@@ -177,10 +172,6 @@ cdef class System:
     @property
     def total_mass(self):
         return self._total_mass
-
-    @property
-    def bounds(self):
-        return np.asarray(self._bounds)
 
     @property
     def step(self):
@@ -322,15 +313,14 @@ cdef class System:
         """Compute the current potential energy of the system"""
 
         cdef Interaction interaction
-        cdef object custom_interaction
 
         cdef AVALUE energy = 0
 
         for interaction in self.interactions:
-            energy += interaction._get_total_energy(self)
-
-        for custom_interaction in self.custom_interactions:
-            energy += custom_interaction.get_total_energy(self)
+            if not interaction.requires_gil:
+                energy += interaction._get_total_energy_nogil(self)
+            else:
+                energy += interaction._get_total_energy(self)
 
         return energy
 
@@ -376,10 +366,10 @@ cdef class System:
         self.reset_forces()
 
         for interaction in self.interactions:
-            interaction._add_all_forces(self)
-
-        for interaction in self.custom_interactions:
-            interaction.add_all_forces(self)
+            if not interaction.requires_gil:
+                interaction._add_all_forces_nogil(self)
+            else:
+                interaction._add_all_forces(self)
 
     def simulate(self, n, reset_step=False):
         """Perform a number of MD simulation steps
@@ -394,8 +384,6 @@ cdef class System:
     cdef void _simulate(self, Py_ssize_t n, bint reset_step):
         """Perform a number of MD simulation steps"""
 
-        cdef Interaction interaction
-        cdef object custom_interaction
         cdef Driver driver
         cdef Reporter reporter
 

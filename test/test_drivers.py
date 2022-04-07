@@ -1,8 +1,8 @@
 import numpy as np
-from sklearn import metrics
 import pytest
 
-from eski import atoms, drivers, interactions, md, metrics
+from eski import atoms, drivers, interactions, md
+from eski.models import system_from_model
 
 
 class TestDriver:
@@ -78,22 +78,17 @@ class TestDriver:
             })
 
     def test_steepest_descent_water(self):
-        atom_list = [
-            atoms.Atom("O", mass=16),
-            atoms.Atom("H", mass=1),
-            atoms.Atom("H", mass=1)
-        ]
 
-        water = md.System(
-            np.array([0, 0, 0, 0.12, 0, 0, 0, 0.1, 0], dtype=float),
-            dim_per_atom=3,
-            atoms=atom_list,
-            interactions=[
-                interactions.HarmonicBond([0, 1, 0, 2], [0.09572, 462750.4, 0.09572, 462750.4]),
-                interactions.HarmonicAngle([1, 0, 2], [np.radians(104.520), 836.800])
-                ],
-            drivers=[drivers.SteepestDescentMinimiser([0.01, 10, 1.2, 0.2])]
-            )
+        water = system_from_model("screwed_water")
+        water.interactions = [
+            interactions.HarmonicBond(
+                [0, 1, 0, 2], [0.09572, 462750.4, 0.09572, 462750.4]
+                ),
+            interactions.HarmonicAngle(
+                [1, 0, 2], [np.radians(104.520), 836.800]
+                )
+            ]
+        water.drivers = [drivers.SteepestDescentMinimiser([0.01, 10, 1.2, 0.2])]
 
         water.simulate(0)
         assert water.potential_energy() < 0.001

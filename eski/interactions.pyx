@@ -32,30 +32,39 @@ cdef class Interaction:
 
     def __cinit__(
             self,
-            indices: list,
-            parameters: list,
+            indices: Optional[list] = None,
+            parameters: Optional[list] = None,
             *,
             group: int = 0,
             _id: Optional[int] = None,
             index_names: Optional[list] = None,
             param_names: Optional[list] = None,
+            requires_gil: bool = False,
             **kwargs):
 
         cdef AINDEX i, index
         cdef AVALUE param
 
-        self._n_indices = len(indices)
-        self._n_parameters = len(parameters)
+        if indices is not None:
+            self._n_indices = len(indices)
+            assert self._n_indices > 0, "Empty indices list"
+            self._indices = self._allocate_and_fill_aindex_array(
+                self._n_indices,
+                indices)
+        else:
+            self._n_indices = 0
 
-        self._indices = self._allocate_and_fill_aindex_array(
-            self._n_indices,
-            indices)
-
-        self._parameters = self._allocate_and_fill_avalue_array(
-            self._n_parameters,
-            parameters)
+        if parameters is not None:
+            self._n_parameters = len(parameters)
+            assert self._n_parameters > 0, "Empty parameters list"
+            self._parameters = self._allocate_and_fill_avalue_array(
+                self._n_parameters,
+                parameters)
+        else:
+            self._n_parameters = 0
 
         self.group = group
+        self.requires_gil = requires_gil
 
     def __dealloc__(self):
         if self._indices != NULL:
@@ -66,8 +75,8 @@ cdef class Interaction:
 
     def __init__(
             self,
-            indices: list,
-            parameters: list,
+            indices: Optional[list] = None,
+            parameters: Optional[list] = None,
             *,
             group: int = 0,
             _id: Optional[int] = None,
@@ -256,7 +265,10 @@ cdef class Interaction:
             len(parameters), parameters
             )
 
-        self._add_force(indices_ptr, parameters_ptr, system)
+        if self.requires_gil:
+            self._add_force(indices_ptr, parameters_ptr, system)
+        else:
+            self._add_force_nogil(indices_ptr, parameters_ptr, system)
 
         free(indices_ptr)
         free(parameters_ptr)
@@ -266,22 +278,6 @@ cdef class Interaction:
         AINDEX *indices,
         AVALUE *parameters,
         System system): ...
-
-    def add_force_nogil(self, indices: list, parameters: list, system):
-        cdef AINDEX i
-
-        cdef AINDEX* indices_ptr = self._allocate_and_fill_aindex_array(
-            len(indices), indices
-            )
-
-        cdef AVALUE* parameters_ptr = self._allocate_and_fill_avalue_array(
-            len(parameters), parameters
-            )
-
-        self._add_force_nogil(indices_ptr, parameters_ptr, system)
-
-        free(indices_ptr)
-        free(parameters_ptr)
 
     cdef void _add_force_nogil(
         self,
@@ -329,6 +325,28 @@ cdef class Interaction:
             system
             )
 
+    def  get_energy(self, indices: list, parameters: list, system):
+        cdef AINDEX i
+        cdef AVALUE energy
+
+        cdef AINDEX* indices_ptr = self._allocate_and_fill_aindex_array(
+            len(indices), indices
+            )
+
+        cdef AVALUE* parameters_ptr = self._allocate_and_fill_avalue_array(
+            len(parameters), parameters
+            )
+
+        if self.requires_gil:
+            energy = self._get_energy(indices_ptr, parameters_ptr, system)
+        else:
+            energy = self._get_energy_nogil(indices_ptr, parameters_ptr, system)
+
+        free(indices_ptr)
+        free(parameters_ptr)
+
+        return energy
+
     cdef AVALUE _get_energy(
             self,
             AINDEX *indices,
@@ -368,7 +386,7 @@ cdef class Interaction:
             AINDEX index,
             System system):
 
-        self._get_energy(
+        return self._get_energy(
             &self._indices[index * self._dindex],
             &self._parameters[index * self._dparam],
             system
@@ -379,7 +397,7 @@ cdef class Interaction:
             AINDEX index,
             System system) nogil:
 
-        self._get_energy_nogil(
+        return self._get_energy_nogil(
             &self._indices[index * self._dindex],
             &self._parameters[index * self._dparam],
             system
@@ -419,10 +437,11 @@ cdef class ConstantBias(Interaction):
             System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
-        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
 
-        for i in range(system._dim_per_atom):
+        for i in range(d):
             f1[i] += parameters[i]
 
     cdef AVALUE _get_energy_nogil(
@@ -448,9 +467,10 @@ cdef class Exclusion(Interaction):
             System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
 
-        for i in range(system._dim_per_atom):
+        for i in range(d):
             f1[i] = 0
 
     cdef AVALUE _get_energy_nogil(
@@ -485,12 +505,12 @@ cdef class HarmonicPositionRestraint(Interaction):
 
         cdef AINDEX i
         cdef AVALUE r, f
-        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
-        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
         cdef AVALUE r0 = parameters[0]
         cdef AVALUE k = parameters[1]
         cdef AVALUE *anchor = &parameters[2]
-        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rv = system._resources.rva
 
         system._pbc._pbc_distance(rv, c1, anchor, d)
@@ -528,13 +548,13 @@ cdef class HarmonicBond(Interaction):
 
         cdef AINDEX i
         cdef AVALUE r, f, _f
-        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
-        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
-        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
-        cdef AVALUE *f2 = &system._forces_ptr[indices[1]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1] * d]
         cdef AVALUE r0 = parameters[0]
         cdef AVALUE k = parameters[1]
-        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rv = system._resources.rva
 
         system._pbc._pbc_distance(rv, c1, c2, d)
@@ -553,11 +573,11 @@ cdef class HarmonicBond(Interaction):
 
         cdef AINDEX i
         cdef AVALUE r
-        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
-        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
         cdef AVALUE r0 = parameters[0]
         cdef AVALUE k = parameters[1]
-        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rv = system._resources.rva
 
         system._pbc._pbc_distance(rv, c1, c2, d)
@@ -585,15 +605,15 @@ cdef class HarmonicAngle(Interaction):
         cdef AINDEX i
         cdef AVALUE ra, rb, f
         cdef AVALUE cos_theta, sin_inv
-        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
-        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
-        cdef AVALUE *c3 = &system._configuration_ptr[indices[1]]
-        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
-        cdef AVALUE *f2 = &system._forces_ptr[indices[1]]
-        cdef AVALUE *f3 = &system._forces_ptr[indices[1]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[2] * d]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1] * d]
+        cdef AVALUE *f3 = &system._forces_ptr[indices[2] * d]
         cdef AVALUE theta0 = parameters[0]
         cdef AVALUE k = parameters[1]
-        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
         cdef AVALUE *der1 = system._resources.der1
@@ -602,7 +622,7 @@ cdef class HarmonicAngle(Interaction):
 
         system._pbc._pbc_distance(rva, c1, c2, d)
         ra = _norm2(rva, d)
-        system._pbc._pbc_distance(rvb, c1, c2, d)
+        system._pbc._pbc_distance(rvb, c3, c2, d)
         rb = _norm2(rvb, d)
 
         cos_theta = 0
@@ -630,12 +650,12 @@ cdef class HarmonicAngle(Interaction):
         cdef AINDEX i
         cdef AVALUE ra, rb
         cdef AVALUE cos_theta
-        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
-        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
-        cdef AVALUE *c3 = &system._configuration_ptr[indices[1]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[2] * d]
         cdef AVALUE theta0 = parameters[0]
         cdef AVALUE k = parameters[1]
-        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
         cdef AVALUE *der1 = system._resources.der1
@@ -673,15 +693,15 @@ cdef class CosineHarmonicAngle(Interaction):
         cdef AINDEX i
         cdef AVALUE ra, rb, f
         cdef AVALUE cos_theta, sin_inv
-        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
-        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
-        cdef AVALUE *c3 = &system._configuration_ptr[indices[1]]
-        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
-        cdef AVALUE *f2 = &system._forces_ptr[indices[1]]
-        cdef AVALUE *f3 = &system._forces_ptr[indices[1]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[2] * d]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1] * d]
+        cdef AVALUE *f3 = &system._forces_ptr[indices[2] * d]
         cdef AVALUE theta0 = parameters[0]
         cdef AVALUE k = parameters[1]
-        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
         cdef AVALUE *der1 = system._resources.der1
@@ -718,12 +738,12 @@ cdef class CosineHarmonicAngle(Interaction):
         cdef AINDEX i
         cdef AVALUE ra, rb
         cdef AVALUE cos_theta
-        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
-        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
-        cdef AVALUE *c3 = &system._configuration_ptr[indices[1]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[2] * d]
         cdef AVALUE theta0 = parameters[0]
         cdef AVALUE k = parameters[1]
-        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
         cdef AVALUE *der1 = system._resources.der1
@@ -732,7 +752,7 @@ cdef class CosineHarmonicAngle(Interaction):
 
         system._pbc._pbc_distance(rva, c1, c2, d)
         ra = _norm2(rva, d)
-        system._pbc._pbc_distance(rvb, c1, c2, d)
+        system._pbc._pbc_distance(rvb, c3, c2, d)
         rb = _norm2(rvb, d)
 
         cos_theta = 0
@@ -759,13 +779,13 @@ cdef class LJ(Interaction):
 
         cdef AINDEX i
         cdef AVALUE r, f, _f
-        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
-        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
-        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
-        cdef AVALUE *f2 = &system._forces_ptr[indices[1]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1] * d]
         cdef AVALUE s = parameters[0]
         cdef AVALUE e = parameters[1]
-        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rv = system._resources.rva
 
         system._pbc._pbc_distance(rv, c1, c2, d)
@@ -784,11 +804,11 @@ cdef class LJ(Interaction):
 
         cdef AINDEX i
         cdef AVALUE r, f
-        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
-        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
         cdef AVALUE s = parameters[0]
         cdef AVALUE e = parameters[1]
-        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rv = system._resources.rva
 
         system._pbc._pbc_distance(rv, c1, c2, d)

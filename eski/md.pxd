@@ -31,7 +31,6 @@ cdef class System:
     cdef public:
         str desc
         list interactions
-        list custom_interactions
         list drivers
         list reporters
         PBCHandler _pbc

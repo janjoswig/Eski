@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from eski import interactions
+from eski import interactions, models
 
 
 class TestInteractions:
@@ -74,34 +74,40 @@ class TestInteractions:
         interaction = interaction_type(indices, parameters)
         assert expected == interaction.get_interaction(i)
 
-    @pytest.mark.parametrize(
-        "interaction_type,indices,parameters",
-        [
-            (interactions.HarmonicBond, [0, 1], [0.1, 0.1]),
-            (
-                interactions.HarmonicBond,
-                [0, 1, 2, 3], [0.1, 0.1, 0.2, 0.1]
-            ),
-            (
-                interactions.HarmonicBond,
-                [0, 1, 0, 2, 2, 3],
-                [0.1, 0.1, 0.2, 0.2, 0.2, 0.1]
-            )
-        ]
-    )
-    def test_add_contributions(
-            self, interaction_type, indices, parameters, num_regression):
-        interaction = interaction_type(indices, parameters)
-        configuration = np.array([
-            [0, 0, 0],
-            [1, 0, 0],
-            [0, 1, 0],
-            [0, 0, 1]
-            ], order="c", dtype=float)
+    def test_screen_harmonic_bond(
+            self, num_regression):
+        system = models.system_from_model("cc1d")
 
-        forces = np.zeros_like(configuration, order="c", dtype=float)
-        # force.add_contributions(configuration, forcevectors)
+        r0_list = np.linspace(0.0825, 0.2225, 101)
+        energies = []
+        for r0 in r0_list:
+            system.interactions = [
+                interactions.HarmonicBond([0, 1], [r0, 259408])
+                ]
+            energies.append(system.potential_energy())
 
         num_regression.check({
-            "interactions": forces.flatten()
+            "energies": np.asarray(energies).flatten()
+            })
+
+    def test_add_all_forces_cc1d(self, num_regression):
+        system = models.system_from_model("cc1d")
+        system.interactions = [
+            interactions.HarmonicBond([0, 1], [0.16, 259408])
+            ]
+        system.add_all_forces()
+        num_regression.check({
+            "forces": system.forces
+            })
+
+    def test_add_all_forces_screwed_water(self, num_regression):
+        system = models.system_from_model("screwed_water")
+        system.interactions = [
+            interactions.HarmonicBond(
+                [0, 1, 0, 2],  [0.09572, 462750.4, 0.09572, 462750.4]
+                )
+            ]
+        system.add_all_forces()
+        num_regression.check({
+            "forces": system.forces
             })

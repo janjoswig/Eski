@@ -1,1 +1,0 @@
-System('Two argon atoms 3D', 2 atoms (3D))

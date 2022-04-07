@@ -26,7 +26,7 @@ cdef class Driver:
     _internal_resource_names = []
     _param_defaults = {}
 
-    def __cinit__(self, parameters: Iterable[float]):
+    def __cinit__(self, parameters: list):
 
         cdef AINDEX i
         cdef AVALUE param
