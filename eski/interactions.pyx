@@ -16,9 +16,9 @@ cdef class Interaction:
     This class is not meant to be initialised.
 
     Args:
-        indices: Iterable of particle indices for which this force
+        indices: List of particle indices for which this force
             should be evaluated.
-        parameters: Iterable of force parameters.
+        parameters: List of force parameters.
         group: Force group. Useful to distinguish between forces
             that should be evaluated at different times steps.
         _id: Unique ID of this force type.
@@ -32,13 +32,13 @@ cdef class Interaction:
 
     def __cinit__(
             self,
-            indices: Iterable[int],
-            parameters: Iterable[float],
+            indices: list,
+            parameters: list,
             *,
             group: int = 0,
             _id: Optional[int] = None,
-            index_names: Optional[Iterable[str]] = None,
-            param_names: Optional[Iterable[str]] = None,
+            index_names: Optional[list] = None,
+            param_names: Optional[list] = None,
             **kwargs):
 
         cdef AINDEX i, index
@@ -47,23 +47,13 @@ cdef class Interaction:
         self._n_indices = len(indices)
         self._n_parameters = len(parameters)
 
-        self._indices = <AINDEX*>malloc(
-            self._n_indices * sizeof(AINDEX)
-            )
-        if self._indices == NULL:
-            raise MemoryError()
+        self._indices = self._allocate_and_fill_aindex_array(
+            self._n_indices,
+            indices)
 
-        self._parameters = <AVALUE*>malloc(
-            self._n_parameters * sizeof(AVALUE)
-            )
-        if self._parameters == NULL:
-            raise MemoryError()
-
-        for i, index in enumerate(indices):
-            self._indices[i] = index
-
-        for i, param in enumerate(parameters):
-            self._parameters[i] = param
+        self._parameters = self._allocate_and_fill_avalue_array(
+            self._n_parameters,
+            parameters)
 
         self.group = group
 
@@ -76,13 +66,13 @@ cdef class Interaction:
 
     def __init__(
             self,
-            indices: Iterable[int],
-            parameters: Iterable[float],
+            indices: list,
+            parameters: list,
             *,
             group: int = 0,
             _id: Optional[int] = None,
-            index_names: Optional[Iterable[str]] = None,
-            param_names: Optional[Iterable[str]] = None,
+            index_names: Optional[list] = None,
+            param_names: Optional[list] = None,
             **kwargs):
 
         if index_names is None:
@@ -149,6 +139,38 @@ cdef class Interaction:
             **kwargs
             )
 
+    cdef AVALUE* _allocate_and_fill_avalue_array(
+            self, AINDEX n, list values):
+
+        cdef AVALUE *ptr
+        cdef AINDEX i
+
+        ptr = <AVALUE*>malloc(n * sizeof(AVALUE))
+
+        if ptr == NULL:
+            raise MemoryError()
+
+        for i in range(n):
+            ptr[i] = values[i]
+
+        return ptr
+
+    cdef AINDEX* _allocate_and_fill_aindex_array(
+            self, AINDEX n, list values):
+
+        cdef AINDEX *ptr
+        cdef AINDEX i
+
+        ptr = <AINDEX*>malloc(n * sizeof(AINDEX))
+
+        if ptr == NULL:
+            raise MemoryError()
+
+        for i in range(n):
+            ptr[i] = values[i]
+
+        return ptr
+
     cpdef void _check_index_param_consistency(self) except *:
         """Raise error if indices and parameters do not match"""
 
@@ -210,91 +232,179 @@ cdef class Interaction:
                 "Interaction index out of range"
                 )
 
-    cpdef void add_all_forces(
-            self,
-            System system):
+    cdef void _add_all_forces(self, System system):
+        cdef AINDEX index
+
+        for index in range(self._n_indices // self._dindex):
+            self._add_force_by_index(index, system)
+
+    cdef void _add_all_forces_nogil(self, System system) nogil:
 
         cdef AINDEX index
 
         for index in range(self._n_indices // self._dindex):
-            self.add_force_by_index(
-                index,
-                system
-                )
+            self._add_force_by_index_nogil(index, system)
 
-    cpdef void add_force_by_index(
-            self,
-            AINDEX index,
-            System system): ...
+    def add_force(self, indices: list, parameters: list, system):
+        cdef AINDEX i
 
-    cdef void _add_all_forces(
-            self,
-            System system) nogil:
+        cdef AINDEX* indices_ptr = self._allocate_and_fill_aindex_array(
+            len(indices), indices
+            )
 
-        cdef AINDEX index
+        cdef AVALUE* parameters_ptr = self._allocate_and_fill_avalue_array(
+            len(parameters), parameters
+            )
 
-        for index in range(self._n_indices // self._dindex):
-            self._add_force_by_index(
-                index,
-                system
-                )
+        self._add_force(indices_ptr, parameters_ptr, system)
+
+        free(indices_ptr)
+        free(parameters_ptr)
+
+    cdef void _add_force(
+        self,
+        AINDEX *indices,
+        AVALUE *parameters,
+        System system): ...
+
+    def add_force_nogil(self, indices: list, parameters: list, system):
+        cdef AINDEX i
+
+        cdef AINDEX* indices_ptr = self._allocate_and_fill_aindex_array(
+            len(indices), indices
+            )
+
+        cdef AVALUE* parameters_ptr = self._allocate_and_fill_avalue_array(
+            len(parameters), parameters
+            )
+
+        self._add_force_nogil(indices_ptr, parameters_ptr, system)
+
+        free(indices_ptr)
+        free(parameters_ptr)
+
+    cdef void _add_force_nogil(
+        self,
+        AINDEX *indices,
+        AVALUE *parameters,
+        System system) nogil: ...
 
     cdef void _add_force_by_index(
             self,
             AINDEX index,
+            System system):
+        """Evaluate force with indices and parameters from interaction index
+
+        Note:
+            Calls implementation :func:`~eski.md.Interaction._add_force`
+
+        Args:
+            index: Index of interaction
+            system: Instance of :class:`eski.md.System`
+        """
+
+        self._add_force(
+            &self._indices[index * self._dindex],
+            &self._parameters[index * self._dparam],
+            system
+            )
+
+    cdef void _add_force_by_index_nogil(
+            self,
+            AINDEX index,
+            System system) nogil:
+        """Evaluate force with indices and parameters from interaction index
+
+        Note:
+            Calls nogil implementation :func:`~eski.md.Interaction._add_force_nogil`
+
+        Args:
+            index: Index of interaction
+            system: Instance of :class:`eski.md.System`
+        """
+
+        self._add_force_nogil(
+            &self._indices[index * self._dindex],
+            &self._parameters[index * self._dparam],
+            system
+            )
+
+    cdef AVALUE _get_energy(
+            self,
+            AINDEX *indices,
+            AVALUE *parameters,
+            System system): ...
+
+    cdef AVALUE _get_energy_nogil(
+            self,
+            AINDEX *indices,
+            AVALUE *parameters,
             System system) nogil: ...
 
-    cpdef AVALUE get_total_energy(
+    cdef AVALUE _get_total_energy(
             self,  System system):
 
         cdef AINDEX index
         cdef AVALUE energy = 0
 
         for index in range(self._n_indices / self._dindex):
-            energy = energy + self._get_energy_by_index(
-                index,
-                system
-                )
+            energy = energy + self._get_energy_by_index(index, system)
 
         return energy
 
-    cpdef AVALUE get_energy_by_index(
-            self,
-            AINDEX index,
-            System system): ...
-
-    cdef AVALUE _get_total_energy(
+    cdef AVALUE _get_total_energy_nogil(
             self,  System system) nogil:
 
         cdef AINDEX index
         cdef AVALUE energy = 0
 
         for index in range(self._n_indices / self._dindex):
-            energy = energy + self._get_energy_by_index(
-                index,
-                system
-                )
+            energy = energy + self._get_energy_by_index_nogil(index, system)
 
         return energy
 
     cdef AVALUE _get_energy_by_index(
             self,
             AINDEX index,
-            System system) nogil: ...
+            System system):
+
+        self._get_energy(
+            &self._indices[index * self._dindex],
+            &self._parameters[index * self._dparam],
+            system
+            )
+
+    cdef AVALUE _get_energy_by_index_nogil(
+            self,
+            AINDEX index,
+            System system) nogil:
+
+        self._get_energy_nogil(
+            &self._indices[index * self._dindex],
+            &self._parameters[index * self._dparam],
+            system
+            )
 
 
 cdef class ConstantBias(Interaction):
-    """Constant force applied to a single atom in each dimension
-
-    On initialisation a list of parameter names should be given
-    that matches in length the number of dimensions per atom.
-    """
+    """Constant force on single atoms"""
 
     _default_index_names = ["p1"]
     _default_param_names = []
     _default_id = 10
 
     def __init__(self, *args, **kwargs):
+        """Initialise constant bias force
+
+        Note:
+            A list of parameter names needs to be specified to
+            state in how many dimensions the force should be applied
+
+        Args:
+            indices: list of individual atoms to which a constant force should be
+                applied
+            parameters: list of forces in each dimension
+        """
         if kwargs["param_names"] is None:
             raise ValueError(
                 "This interaction type requires `param_names`"
@@ -302,67 +412,51 @@ cdef class ConstantBias(Interaction):
 
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_by_index(
+    cdef void _add_force_nogil(
             self,
-            AINDEX index,
+            AINDEX *indices,
+            AVALUE *parameters,
             System system) nogil:
-        """Evaluate biasing force
 
-        Args:
-            index: Index of interaction
-            configuration: Pointer to atom position array
-            forces: Pointer to forces array.
-                Force in (kJ / (mol nm)).
-        """
-
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AVALUE *fv1 = &system._forces[p1 * system._dim_per_atom]
-        cdef AVALUE *b = &self._parameters[index * self._dparam]
+        cdef AINDEX i
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
 
         for i in range(system._dim_per_atom):
-            fv1[i] += b[i]
+            f1[i] += parameters[i]
 
-    cdef AVALUE _get_energy_by_index(
+    cdef AVALUE _get_energy_nogil(
             self,
-            AINDEX index,
+            AINDEX *indices,
+            AVALUE *parameters,
             System system) nogil:
 
         return 0
 
 
 cdef class Exclusion(Interaction):
-    """Constant force applied to a single atom in each dimension
-
-    On initialisation a list of parameter names should be given
-    that matches in length the number of dimensions per atom.
-    """
+    """Removes forces acting on atoms"""
 
     _default_index_names = ["p1"]
     _default_param_names = []
     _default_id = 10
 
-    cdef void _add_force_by_index(
+    cdef void _add_force_nogil(
             self,
-            AINDEX index,
+            AINDEX *indices,
+            AVALUE *parameters,
             System system) nogil:
-        """Evaluate biasing force
 
-        Args:
-            index: Index of interaction
-            configuration: Pointer to atom position array
-            forces: Pointer to forces array.
-                Force in (kJ / (mol nm)).
-        """
-
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AVALUE *fv1 = &system._forces[p1 * system._dim_per_atom]
+        cdef AINDEX i
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
 
         for i in range(system._dim_per_atom):
-            fv1[i] = 0
+            f1[i] = 0
 
-    cdef AVALUE _get_energy_by_index(
+    cdef AVALUE _get_energy_nogil(
             self,
-            AINDEX index,
+            AINDEX *indices,
+            AVALUE *parameters,
             System system) nogil:
 
         return 0
@@ -383,51 +477,34 @@ cdef class HarmonicPositionRestraint(Interaction):
 
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_by_index(
+    cdef void _add_force_nogil(
             self,
-            AINDEX index,
+            AINDEX *indices,
+            AVALUE *parameters,
             System system) nogil:
-        """Evaluate harmonic restraining force
-
-        Args:
-            index: Index of interaction
-            system: :class:`eski.md.System`
-        """
 
         cdef AINDEX i
         cdef AVALUE r, f
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AVALUE r0 = self._parameters[index * self._dparam]
-        cdef AVALUE k = self._parameters[index * self._dparam + 1]
-        cdef AVALUE *anchor = &self._parameters[index * self._dparam + 2]
-        cdef AVALUE *fv1
-        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
+        cdef AVALUE r0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AVALUE *anchor = &parameters[2]
+        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rv = system._resources.rva
-        cdef AVALUE *configuration = system._configuration_ptr
-        cdef AVALUE *forces = system._forces_ptr
 
-        system._pbc._pbc_distance(
-            rv,
-            &configuration[p1 * dim_per_atom],
-            anchor,
-            dim_per_atom
-            )
-
-        r = 0
-        for i in range(dim_per_atom):
-            r = r + cpow(rv[i], 2)
-        r = csqrt(r)
+        system._pbc._pbc_distance(rv, c1, anchor, d)
+        r = _norm2(rv, d)
 
         if r != 0:
-            fv1 = &forces[p1 * dim_per_atom]
-
             f = -k * (r - r0)
-            for i in range(dim_per_atom):
-                fv1[i] += f * rv[i] / r
+            for i in range(d):
+                f1[i] += f * rv[i] / r
 
-    cdef AVALUE _get_energy_by_index(
+    cdef AVALUE _get_energy_nogil(
             self,
-            AINDEX index,
+            AINDEX *indices,
+            AVALUE *parameters,
             System system) nogil:
 
         return 0
@@ -444,76 +521,47 @@ cdef class HarmonicBond(Interaction):
         """Connects two particles with parameters r0 and k"""
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_by_index(
-            self,
-            AINDEX index,
-            System system) nogil:
-        """Evaluate harmonic bond force
-
-        Args:
-            index: Index of interaction
-            system: :class:`eski.md.System`
-        """
+    cdef void _add_force_nogil(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
 
         cdef AINDEX i
         cdef AVALUE r, f, _f
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AVALUE r0 = self._parameters[index * self._dparam]
-        cdef AVALUE k = self._parameters[index * self._dparam + 1]
-        cdef AVALUE *fv1
-        cdef AVALUE *fv2
-        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1]]
+        cdef AVALUE r0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rv = system._resources.rva
-        cdef AVALUE *configuration = system._configuration_ptr
-        cdef AVALUE *forces = system._forces_ptr
 
-        system._pbc._pbc_distance(
-            rv,
-            &configuration[p1 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        r = 0
-        for i in range(dim_per_atom):
-            r = r + cpow(rv[i], 2)
-        r = csqrt(r)
-
-        fv1 = &forces[p1 * dim_per_atom]
-        fv2 = &forces[p2 * dim_per_atom]
+        system._pbc._pbc_distance(rv, c1, c2, d)
+        r = _norm2(rv, d)
 
         f = -k * (r - r0)
-        for i in range(dim_per_atom):
+        for i in range(d):
             _f = f * rv[i] / r
-            fv1[i] += _f
-            fv2[i] -= _f
+            f1[i] += _f
+            f2[i] -= _f
 
-    cdef AVALUE _get_energy_by_index(
-            self,
-            AINDEX index,
-            System system) nogil:
+    cdef AVALUE _get_energy_nogil(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
 
+        cdef AINDEX i
         cdef AVALUE r
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AVALUE r0 = self._parameters[index * self._dparam]
-        cdef AVALUE k = self._parameters[index * self._dparam + 1]
-        cdef AVALUE *configuration = system._configuration_ptr
-        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE r0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rv = system._resources.rva
 
-        system._pbc._pbc_distance(
-            rv,
-            &configuration[p1 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        r = 0
-        for i in range(dim_per_atom):
-            r = r + cpow(rv[i], 2)
-        r = csqrt(r)
+        system._pbc._pbc_distance(rv, c1, c2, d)
+        r = _norm2(rv, d)
 
         return 0.5 * k * cpow(r - r0, 2)
 
@@ -529,127 +577,79 @@ cdef class HarmonicAngle(Interaction):
         """Connects three particles with parameters theta0 and k"""
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_by_index(
-            self,
-            AINDEX index,
-            System system) nogil:
-        """Evaluate harmonic bond force
-
-        Args:
-            index: Index of interaction
-            system: :class:`eski.md.System`
-        """
+    cdef void _add_force_nogil(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE r, rb, f
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AINDEX p3 = self._indices[index * self._dindex + 2]
-        cdef AVALUE theta0 = self._parameters[index * self._dparam]
-        cdef AVALUE k = self._parameters[index * self._dparam + 1]
-        cdef AVALUE *fv1
-        cdef AVALUE *fv2
-        cdef AVALUE *fv3
-        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE ra, rb, f
+        cdef AVALUE cos_theta, sin_inv
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1]]
+        cdef AVALUE *f3 = &system._forces_ptr[indices[1]]
+        cdef AVALUE theta0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
-        cdef AVALUE *configuration = system._configuration_ptr
-        cdef AVALUE *forces = system._forces_ptr
-        cdef AVALUE cos_theta, sin_inv
         cdef AVALUE *der1 = system._resources.der1
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
-        system._pbc._pbc_distance(
-            rva,
-            &configuration[p1 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        r = 0
-        for i in range(dim_per_atom):
-            r = r + cpow(rva[i], 2)
-        r = csqrt(r)
-
-        system._pbc._pbc_distance(
-            rvb,
-            &configuration[p3 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        rb = 0
-        for i in range(dim_per_atom):
-            rb = rb + cpow(rvb[i], 2)
-        rb = csqrt(rb)
+        system._pbc._pbc_distance(rva, c1, c2, d)
+        ra = _norm2(rva, d)
+        system._pbc._pbc_distance(rvb, c1, c2, d)
+        rb = _norm2(rvb, d)
 
         cos_theta = 0
-        for i in range(dim_per_atom):
-            cos_theta = cos_theta + (rva[i] / r) * ( rvb[i] / rb)
+        for i in range(d):
+            cos_theta = cos_theta + (rva[i] / ra) * ( rvb[i] / rb)
 
         sin_inv = 1.0 / csqrt(1.0 - cos_theta * cos_theta)
 
-        for i in range(dim_per_atom):
-            der1[i] = sin_inv * (cos_theta  * (rva[i] / r) - (rvb[i] / rb)) / r
-            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rva[i] / r)) / rb
+        for i in range(d):
+            der1[i] = sin_inv * (cos_theta  * (rva[i] / ra) - (rvb[i] / rb)) / ra
+            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rva[i] / ra)) / rb
             der2[i] = -(der1[i] + der3[i])
 
-        fv1 = &forces[p1 * dim_per_atom]
-        fv2 = &forces[p2 * dim_per_atom]
-        fv3 = &forces[p3 * dim_per_atom]
-
         f = -k * (cacos(cos_theta) - theta0)
-        for i in range(dim_per_atom):
-            fv1[i] += f * der1[i]
-            fv2[i] += f * der2[i]
-            fv3[i] += f * der3[i]
+        for i in range(d):
+            f1[i] += f * der1[i]
+            f2[i] += f * der2[i]
+            f3[i] += f * der3[i]
 
-    cdef AVALUE _get_energy_by_index(
-            self,
-            AINDEX index,
-            System system) nogil:
+    cdef AVALUE _get_energy_nogil(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE r, rb
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AINDEX p3 = self._indices[index * self._dindex + 2]
-        cdef AVALUE theta0 = self._parameters[index * self._dparam]
-        cdef AVALUE k = self._parameters[index * self._dparam + 1]
-        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE ra, rb
+        cdef AVALUE cos_theta
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE theta0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
-        cdef AVALUE *configuration = system._configuration_ptr
-        cdef AVALUE cos_theta
+        cdef AVALUE *der1 = system._resources.der1
+        cdef AVALUE *der2 = system._resources.der2
+        cdef AVALUE *der3 = system._resources.der3
 
-        system._pbc._pbc_distance(
-            rva,
-            &configuration[p1 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        r = 0
-        for i in range(dim_per_atom):
-            r = r + cpow(rva[i], 2)
-        r = csqrt(r)
-
-        system._pbc._pbc_distance(
-            rvb,
-            &configuration[p3 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        rb = 0
-        for i in range(dim_per_atom):
-            rb = rb + cpow(rvb[i], 2)
-        rb = csqrt(rb)
+        system._pbc._pbc_distance(rva, c1, c2, d)
+        ra = _norm2(rva, d)
+        system._pbc._pbc_distance(rvb, c3, c2, d)
+        rb = _norm2(rvb, d)
 
         cos_theta = 0
-        for i in range(dim_per_atom):
-            cos_theta = cos_theta + (rva[i] / r) * (rvb[i] / rb)
+        for i in range(d):
+            cos_theta = cos_theta + (rva[i] / ra) * ( rvb[i] / rb)
 
         return 0.5 * k * cpow(cacos(cos_theta) - theta0, 2)
 
@@ -665,133 +665,85 @@ cdef class CosineHarmonicAngle(Interaction):
         """Connects three particles with parameters theta0 and k"""
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_by_index(
-            self,
-            AINDEX index,
-            System system) nogil:
-        """Evaluate harmonic bond force
-
-        Args:
-            index: Index of interaction
-            system: :class:`eski.md.System`
-        """
+    cdef void _add_force_nogil(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE r, rb, f
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AINDEX p3 = self._indices[index * self._dindex + 2]
-        cdef AVALUE theta0 = self._parameters[index * self._dparam]
-        cdef AVALUE k = self._parameters[index * self._dparam + 1]
-        cdef AVALUE *fv1
-        cdef AVALUE *fv2
-        cdef AVALUE *fv3
-        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE ra, rb, f
+        cdef AVALUE cos_theta, sin_inv
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1]]
+        cdef AVALUE *f3 = &system._forces_ptr[indices[1]]
+        cdef AVALUE theta0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
-        cdef AVALUE *configuration = system._configuration_ptr
-        cdef AVALUE *forces = system._forces_ptr
-        cdef AVALUE cos_theta, sin_inv
         cdef AVALUE *der1 = system._resources.der1
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
-        system._pbc._pbc_distance(
-            rva,
-            &configuration[p1 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        r = 0
-        for i in range(dim_per_atom):
-            r = r + cpow(rva[i], 2)
-        r = csqrt(r)
-
-        system._pbc._pbc_distance(
-            rvb,
-            &configuration[p3 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        rb = 0
-        for i in range(dim_per_atom):
-            rb = rb + cpow(rvb[i], 2)
-        rb = csqrt(rb)
+        system._pbc._pbc_distance(rva, c1, c2, d)
+        ra = _norm2(rva, d)
+        system._pbc._pbc_distance(rvb, c3, c2, d)
+        rb = _norm2(rvb, d)
 
         cos_theta = 0
-        for i in range(dim_per_atom):
-            cos_theta = cos_theta + (rva[i] / r) * ( rvb[i] / rb)
+        for i in range(d):
+            cos_theta = cos_theta + (rva[i] / ra) * ( rvb[i] / rb)
 
         sin_inv = 1.0 / csqrt(1.0 - cos_theta * cos_theta)
 
-        for i in range(dim_per_atom):
-            der1[i] = sin_inv * (cos_theta  * (rva[i] / r) - (rvb[i] / rb)) / r
-            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rva[i] / r)) / rb
+        for i in range(d):
+            der1[i] = sin_inv * (cos_theta  * (rva[i] / ra) - (rvb[i] / rb)) / ra
+            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rva[i] / ra)) / rb
             der2[i] = -(der1[i] + der3[i])
 
-        fv1 = &forces[p1 * dim_per_atom]
-        fv2 = &forces[p2 * dim_per_atom]
-        fv3 = &forces[p3 * dim_per_atom]
-
         f = k * (cos_theta - theta0) * csin(cacos(cos_theta))
-        for i in range(dim_per_atom):
-            fv1[i] += f * der1[i]
-            fv2[i] += f * der2[i]
-            fv3[i] += f * der3[i]
+        for i in range(d):
+            f1[i] += f * der1[i]
+            f2[i] += f * der2[i]
+            f3[i] += f * der3[i]
 
-    cdef AVALUE _get_energy_by_index(
-            self,
-            AINDEX index,
-            System system) nogil:
+    cdef AVALUE _get_energy_nogil(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE r, rb
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AINDEX p3 = self._indices[index * self._dindex + 2]
-        cdef AVALUE theta0 = self._parameters[index * self._dparam]
-        cdef AVALUE k = self._parameters[index * self._dparam + 1]
-        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef AVALUE ra, rb
+        cdef AVALUE cos_theta
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE theta0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rva = system._resources.rva
         cdef AVALUE *rvb = system._resources.rvb
-        cdef AVALUE *configuration = system._configuration_ptr
-        cdef AVALUE cos_theta
+        cdef AVALUE *der1 = system._resources.der1
+        cdef AVALUE *der2 = system._resources.der2
+        cdef AVALUE *der3 = system._resources.der3
 
-        system._pbc._pbc_distance(
-            rva,
-            &configuration[p1 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        r = 0
-        for i in range(dim_per_atom):
-            r = r + cpow(rva[i], 2)
-        r = csqrt(r)
-
-        system._pbc._pbc_distance(
-            rvb,
-            &configuration[p3 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        rb = 0
-        for i in range(dim_per_atom):
-            rb = rb + cpow(rvb[i], 2)
-        rb = csqrt(rb)
+        system._pbc._pbc_distance(rva, c1, c2, d)
+        ra = _norm2(rva, d)
+        system._pbc._pbc_distance(rvb, c1, c2, d)
+        rb = _norm2(rvb, d)
 
         cos_theta = 0
-        for i in range(dim_per_atom):
-            cos_theta = cos_theta + (rva[i] / r) * (rvb[i] / rb)
+        for i in range(d):
+            cos_theta = cos_theta + (rva[i] / ra) * ( rvb[i] / rb)
 
         return 0.5 * k * cpow(cos_theta - theta0, 2)
 
 
 cdef class LJ(Interaction):
-    """Harmonic spring force approximating a chemical bond"""
+    """Non-bonded Lennard-Jones interaction"""
 
     _default_index_names = ["p1", "p2"]
     _default_param_names = ["sigma", "epsilon"]
@@ -800,76 +752,47 @@ cdef class LJ(Interaction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_by_index(
-            self,
-            AINDEX index,
-            System system) nogil:
-        """Evaluate Lennard-Jones force
-
-        Args:
-            index: Index of interaction
-            system: :class:`eski.md.System`
-        """
+    cdef void _add_force_nogil(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
 
         cdef AINDEX i
         cdef AVALUE r, f, _f
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AVALUE s = self._parameters[index * self._dparam]
-        cdef AVALUE e = self._parameters[index * self._dparam + 1]
-        cdef AVALUE *fv1
-        cdef AVALUE *fv2
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0]]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1]]
+        cdef AVALUE s = parameters[0]
+        cdef AVALUE e = parameters[1]
+        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rv = system._resources.rva
-        cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *configuration = system._configuration_ptr
-        cdef AVALUE *forces = system._forces_ptr
 
-        system._pbc._pbc_distance(
-            rv,
-            &configuration[p1 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
+        system._pbc._pbc_distance(rv, c1, c2, d)
+        r = _norm2(rv, d)
 
-        r = 0
-        for i in range(dim_per_atom):
-            r = r + cpow(rv[i], 2)
-        r = csqrt(r)
-
-        fv1 = &forces[p1 * dim_per_atom]
-        fv2 = &forces[p2 * dim_per_atom]
-
-        f = 24 * e/r * (2 * cpow(s / r, 12) - cpow(s / r, 6))
-        for i in range(dim_per_atom):
+        f = 24 * e / r * (2 * cpow(s / r, 12) - cpow(s / r, 6))
+        for i in range(d):
             _f = f * rv[i] / r
-            fv1[i] += _f
-            fv2[i] -= _f
+            f1[i] += _f
+            f2[i] -= _f
 
-    cdef AVALUE _get_energy_by_index(
-            self,
-            AINDEX index,
-            System system) nogil:
+    cdef AVALUE _get_energy_nogil(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
 
-        cdef AVALUE r
-        cdef AINDEX p1 = self._indices[index * self._dindex]
-        cdef AINDEX p2 = self._indices[index * self._dindex + 1]
-        cdef AVALUE s = self._parameters[index * self._dparam]
-        cdef AVALUE e = self._parameters[index * self._dparam + 1]
-        cdef AINDEX dim_per_atom = system._dim_per_atom
-        cdef AVALUE *configuration = system._configuration_ptr
+        cdef AINDEX i
+        cdef AVALUE r, f
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0]]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1]]
+        cdef AVALUE s = parameters[0]
+        cdef AVALUE e = parameters[1]
+        cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *rv = system._resources.rva
 
-        system._pbc._pbc_distance(
-            rv,
-            &configuration[p1 * dim_per_atom],
-            &configuration[p2 * dim_per_atom],
-            dim_per_atom
-            )
-
-        r = 0
-        for i in range(dim_per_atom):
-            r = r + cpow(rv[i], 2)
-        r = csqrt(r)
+        system._pbc._pbc_distance(rv, c1, c2, d)
+        r = _norm2(rv, d)
 
         return 4 * e * (cpow(s / r, 12) - cpow(s / r, 6))
 

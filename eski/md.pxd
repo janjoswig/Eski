@@ -9,7 +9,7 @@ from eski.interactions cimport Interaction
 from eski.drivers cimport Driver
 from eski.atoms cimport Atom, InternalAtom, make_internal_atoms
 from eski.pbc cimport PBCHandler, NoPBC
-from eski.metrics cimport _random_gaussian, _euclidean_distance
+from eski.metrics cimport _random_gaussian, _norm2
 
 
 cdef class Resources:

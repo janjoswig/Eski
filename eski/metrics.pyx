@@ -53,35 +53,38 @@ def get_max(a):
     return _get_max(&aview[0], a.shape[0])
 
 
-cdef inline AVALUE _euclidean_distance(
+cdef inline void _distance(
         AVALUE *rvptr, AVALUE *p1ptr, AVALUE *p2ptr, AINDEX d) nogil:
-    """Calculate euclidean distance
+    """Calculate distance vector
 
     Args:
        rvptr: Pointer to output distance vector array.
        p1ptr: Pointer to first input position array.
        p2ptr: Pointer to second input position array.
-
-    Returns:
-       Distance
     """
 
     cdef AINDEX i
-    cdef AVALUE r = 0
 
     for i in range(d):
-        rvptr[i] = p1ptr[i] - p2ptr[i]
-        r += cpow(rvptr[i], 2)
-
-    return csqrt(r)
+        rvptr[i] = p2ptr[i] - p1ptr[i]
 
 
-def euclidean_distance(p1, p2):
+cdef inline AVALUE _norm2(AVALUE *rvptr, AINDEX d) nogil:
+    cdef AVALUE norm = 0
+    cdef AINDEX i
+
+    for i in range(d):
+        norm = norm + rvptr[i] * rvptr[i]
+
+    return csqrt(norm)
+
+
+def euclidean_distance(p1, p2, norm=False):
     """Calculate euclidean distance between two vectors
 
     Args:
-       p1: Array-like coordinates of point 1
-       p2: Array-like coordinates of point 2
+       p1: Coordinates of point 1
+       p2: Coordinates of point 2
 
     Returns:
         Distance
@@ -89,6 +92,11 @@ def euclidean_distance(p1, p2):
 
     cdef AVALUE[::1] p1view = p1
     cdef AVALUE[::1] p2view = p2
-    cdef AVALUE[::1] rv = np.zeros(p1.shape[0], dtype=P_AVALUE)
+    cdef AVALUE[::1] rv = np.zeros_like(p1, dtype=P_AVALUE)
 
-    return _euclidean_distance(&rv[0], &p1view[0], &p2view[0], p1.shape[0])
+    _distance(&rv[0], &p1view[0], &p2view[0], len(p1view))
+
+    if norm:
+        return _norm2(&rv[0], len(p1view))
+    else:
+        return np.asarray(rv)

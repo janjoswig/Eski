@@ -11,5 +11,7 @@ cdef double _random_gaussian() nogil
 
 cdef AVALUE _get_max(AVALUE *ptr, AINDEX n) nogil
 
-cdef AVALUE _euclidean_distance(
+cdef void _distance(
     AVALUE *rvptr, AVALUE *p1ptr, AVALUE *p2ptr, AINDEX d) nogil
+
+cdef AVALUE _norm2(AVALUE *rvptr, AINDEX d) nogil

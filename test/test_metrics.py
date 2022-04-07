@@ -17,7 +17,8 @@ from eski import metrics
 def test_euclidean_distance(p1, p2, distance):
     p1 = np.array(p1, dtype=np.float64)
     p2 = np.array(p2, dtype=np.float64)
-    assert distance == metrics.euclidean_distance(p1, p2)
+    assert distance == metrics.euclidean_distance(p1, p2, norm=True)
+    assert np.allclose(p2 - p1, metrics.euclidean_distance(p1, p2))
 
 
 def test_random_uniform():
