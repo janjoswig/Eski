@@ -23,7 +23,6 @@ cdef class Resources:
         AVALUE *com_velocity
         AVALUE[::1] configuration
         AVALUE prev_epot
-        AVALUE adjusted_tau_steep
 
     cdef AVALUE* allocate_avalue_array(self, AINDEX n)
 

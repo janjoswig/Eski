@@ -23,6 +23,8 @@ cdef class Driver:
 
     _param_names = []
     _resource_requirements = []
+    _internal_resource_names = []
+    _param_defaults = {}
 
     def __cinit__(self, parameters: Iterable[float]):
 
@@ -45,6 +47,9 @@ cdef class Driver:
         if self._parameters != NULL:
             free(self._parameters)
 
+        if self._internal_resources != NULL:
+            free(self._internal_resources)
+
     def __init__(self, *args, **kwargs):
         self._dparam = 0
         self._check_param_consistency()
@@ -59,10 +64,22 @@ cdef class Driver:
         return f"{self.__class__.__name__}({param_repr})"
 
     @classmethod
-    def from_mapping(cls, parameters: Mapping[str, float]):
+    def from_mapping(cls, parameters: Mapping[str, float] = None):
+        if parameters is None:
+            parameters = {}
+
         parameter_list = []
         for name in cls._param_names:
-            parameter_list.append(parameters[name])
+            value = parameters.get(name)
+            if value is None:
+                value = cls._param_defaults.get(name)
+                if value is None:
+                    raise ValueError(
+                f"driver {cls.__name__!r} "
+                f"requires parameter '{name}' "
+                f"which was not given (no default provided)"
+                )
+            parameter_list.append(value)
 
         return cls(parameter_list)
 
@@ -100,7 +117,14 @@ cdef class SteepestDescentMinimiser(Driver):
     """
 
     _param_names = ["tau", "tolerance", "tuneup", "tunedown"]
-    _resource_requirements = ["configuration_b"]
+    _resource_requirements = ["configuration"]
+    _internal_resource_names = ["tau_adjusted"]
+    _param_defaults = {
+        "tau": 0.01,
+        "tolerance": 100,
+        "tuneup": 1.2,
+        "tunedown": 0.2,
+        }
 
     def __init__(self, *args, **kwargs):
         """The default constructor takes the following parameters in
@@ -116,19 +140,26 @@ cdef class SteepestDescentMinimiser(Driver):
         self._check_param_consistency()
 
     cdef void _on_startup(self, System system):
+        self._dres = 1
+
+        self._internal_resources = <AVALUE*>malloc(
+            self._dres * sizeof(AVALUE)
+            )
+        if self._internal_resources == NULL:
+            raise MemoryError()
+
         system._resources.configuration = np.zeros_like(
             system._configuration,
             dtype=P_AVALUE,
             order="c"
             )
         system._resources.prev_epot = system.potential_energy()
-        system._resources.adjusted_tau_steep = self._parameters[0]
-
+        self._internal_resources[0] = self._parameters[0]
 
     cdef void _update(self, System system):
 
         cdef AINDEX index, d, i
-        cdef AVALUE tau = system._resources.adjusted_tau_steep
+        cdef AVALUE tau = self._internal_resources[0]
         cdef AVALUE tolerance = self._parameters[1]
         cdef AVALUE tuneup = self._parameters[2]
         cdef AVALUE tunedown = self._parameters[3]
@@ -157,14 +188,14 @@ cdef class SteepestDescentMinimiser(Driver):
         epot = system.potential_energy()
 
         if epot < system._resources.prev_epot:
-            system._resources.adjusted_tau_steep *= tuneup
+            self._internal_resources[0] *= tuneup
             system._resources.prev_epot = epot
 
             with nogil:
                 for i in prange(system._n_dim):
                     system._configuration[i] = trial_configuration[i]
         else:
-            system._resources.adjusted_tau_steep *= tunedown
+            self._internal_resources[0] *= tunedown
 
         system._configuration_ptr = &system._configuration[0]
 
@@ -180,6 +211,9 @@ cdef class EulerIntegrator(Driver):
     """
 
     _param_names = ["dt"]
+    _param_defaults = {
+        "dt": 0.001
+    }
 
     def __init__(self, *args, **kwargs):
         self._dparam = 1
@@ -227,6 +261,11 @@ cdef class EulerMaruyamaIntegrator(Driver):
     """
 
     _param_names = ["dt", "friction", "T"]
+    _param_defaults = {
+        "dt": 0.001,
+        "friction": 1000,
+        "T": 300
+    }
 
     def __init__(self, *args, **kwargs):
         self._dparam = 3

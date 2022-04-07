@@ -435,7 +435,6 @@ cdef class Resources:
         self.configuration = np.array([])
 
         self.prev_epot = 0
-        self.adjusted_tau_steep = 0
 
     def __dealloc__(self):
 
