@@ -716,3 +716,7 @@ cdef class CoulombPME(Interaction):
     Smeared out Gauss (alpha/sqrt(pi))**3 exp(-alpha**2 r**2)
     """
     pass
+
+
+cdef class Cutoff:
+    pass
