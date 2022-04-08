@@ -17,3 +17,15 @@ else:
         )
     self._boxinv = np.linalg.inv(self._box)
 ```
+
+make_pair
+---------
+
+```python
+cdef extern from "<utility>" namespace "std" nogil:
+    pair[T,U] make_pair[T,U](T&,U&)
+
+ctypedef pair[AINDEXPTR, AVALUEPTR] IVPTRPAIR
+
+make_pair(<T>T, <U>U)
+```

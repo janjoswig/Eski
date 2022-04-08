@@ -10,7 +10,7 @@ from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
 
 cdef class InteractionProvider:
 
-    cdef IVPTRPAIR get_interaction_by_index(self, AINDEX index, Interaction interaction) nogil: ...
+    cdef (AINDEX*, AVALUE*) get_interaction_by_index(self, AINDEX index, Interaction interaction) nogil: ...
     cpdef void _check_index_param_consistency(self, Interaction interaction) except *: ...
     cpdef void _check_interaction_index(self, AINDEX index, Interaction interaction) except *: ...
     cdef inline AINDEX _n_interactions(self, Interaction interaction) nogil:
@@ -118,17 +118,13 @@ cdef class ExplicitProvider(InteractionProvider):
 
         return info
 
-    cdef IVPTRPAIR get_interaction_by_index(
+    cdef (AINDEX*, AVALUE*) get_interaction_by_index(
             self, AINDEX index, Interaction interaction) nogil:
 
-        cdef IVPTRPAIR ivpair
-
-        ivpair = make_pair(
-            <AINDEX*>&self._indices[index * interaction._dindex],
-            <AVALUE*>&self._parameters[index * interaction._dparam]
+        return (
+            &self._indices[index * interaction._dindex],
+            &self._parameters[index * interaction._dparam]
             )
-
-        return ivpair
 
 
 cdef class Interaction:
@@ -152,7 +148,6 @@ cdef class Interaction:
     _default_index_names = ["p1"]
     _default_param_names = ["x"]
     _default_id = 0
-    _default_requires_gil = False
 
     def __cinit__(
             self,
@@ -197,8 +192,6 @@ cdef class Interaction:
             _id = self._default_id
         self._id = _id
 
-        self.requires_gil = self._default_requires_gil
-
     def __repr__(self):
         attr_repr = ", ".join(
             [
@@ -225,21 +218,14 @@ cdef class Interaction:
     def id(self):
        return self._id
 
-    cdef void _add_all_forces(self, System system):
+    cdef inline void _add_all_forces(self, System system) nogil:
         cdef AINDEX index
-        cdef IVPTRPAIR ivpair
+        cdef AINDEX *indices
+        cdef AVALUE *parameters
 
         for index in range(self.provider._n_interactions(self)):
-            ivpair = self.provider.get_interaction_by_index(index, self)
-            self._add_force(ivpair.first, ivpair.second, system)
-
-    cdef void _add_all_forces_nogil(self, System system) nogil:
-        cdef AINDEX index
-        cdef IVPTRPAIR ivpair
-
-        for index in range(self.provider._n_interactions(self)):
-            ivpair = self.provider.get_interaction_by_index(index, self)
-            self._add_force_nogil(ivpair.first, ivpair.second, system)
+            indices, parameters = self.provider.get_interaction_by_index(index, self)
+            self._add_force(indices, parameters, system)
 
     def add_force(self, indices: list, parameters: list, System system):
         cdef AINDEX i
@@ -252,21 +238,12 @@ cdef class Interaction:
             len(parameters), parameters
             )
 
-        if self.requires_gil:
-            self._add_force(indices_ptr, parameters_ptr, system)
-        else:
-            with nogil: self._add_force_nogil(indices_ptr, parameters_ptr, system)
+        self._add_force(indices_ptr, parameters_ptr, system)
 
         free(indices_ptr)
         free(parameters_ptr)
 
     cdef void _add_force(
-        self,
-        AINDEX *indices,
-        AVALUE *parameters,
-        System system): ...
-
-    cdef void _add_force_nogil(
         self,
         AINDEX *indices,
         AVALUE *parameters,
@@ -284,10 +261,7 @@ cdef class Interaction:
             len(parameters), parameters
             )
 
-        if self.requires_gil:
-            energy = self._get_energy(indices_ptr, parameters_ptr, system)
-        else:
-            energy = self._get_energy_nogil(indices_ptr, parameters_ptr, system)
+        energy = self._get_energy(indices_ptr, parameters_ptr, system)
 
         free(indices_ptr)
         free(parameters_ptr)
@@ -298,43 +272,21 @@ cdef class Interaction:
             self,
             AINDEX *indices,
             AVALUE *parameters,
-            System system): ...
-
-    cdef AVALUE _get_energy_nogil(
-            self,
-            AINDEX *indices,
-            AVALUE *parameters,
             System system) nogil: ...
 
-    cdef AVALUE _get_total_energy(
-            self,  System system):
-
-        cdef AINDEX index
-        cdef IVPTRPAIR ivpair
-        cdef AVALUE energy = 0
-
-        for index in range(self.provider._n_interactions(self)):
-            ivpair = self.provider.get_interaction_by_index(index, self)
-            energy = energy + self._get_energy(ivpair.first, ivpair.second, system)
-
-        return energy
-
-    cdef AVALUE _get_total_energy_nogil(
+    cdef inline AVALUE _get_total_energy(
             self,  System system) nogil:
 
         cdef AINDEX index
-        cdef IVPTRPAIR ivpair
+        cdef AINDEX *indices
+        cdef AVALUE *parameters
         cdef AVALUE energy = 0
 
         for index in range(self.provider._n_interactions(self)):
-            ivpair = self.provider.get_interaction_by_index(index, self)
-            energy = energy + self._get_energy_nogil(ivpair.first, ivpair.second, system)
+            indices, parameters = self.provider.get_interaction_by_index(index, self)
+            energy = energy + self._get_energy(indices, parameters, system)
 
         return energy
-
-
-cdef class CustomInteraction(Interaction):
-    _default_requires_gil = True
 
 
 cdef class ConstantBias(Interaction):
@@ -363,7 +315,7 @@ cdef class ConstantBias(Interaction):
 
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_nogil(
+    cdef void _add_force(
             self,
             AINDEX *indices,
             AVALUE *parameters,
@@ -377,7 +329,7 @@ cdef class ConstantBias(Interaction):
         for i in range(d):
             f1[i] += parameters[i]
 
-    cdef AVALUE _get_energy_nogil(
+    cdef AVALUE _get_energy(
             self,
             AINDEX *indices,
             AVALUE *parameters,
@@ -393,7 +345,7 @@ cdef class Exclusion(Interaction):
     _default_param_names = []
     _default_id = 10
 
-    cdef void _add_force_nogil(
+    cdef void _add_force(
             self,
             AINDEX *indices,
             AVALUE *parameters,
@@ -406,7 +358,7 @@ cdef class Exclusion(Interaction):
         for i in range(d):
             f1[i] = 0
 
-    cdef AVALUE _get_energy_nogil(
+    cdef AVALUE _get_energy(
             self,
             AINDEX *indices,
             AVALUE *parameters,
@@ -430,7 +382,7 @@ cdef class HarmonicPositionRestraint(Interaction):
 
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_nogil(
+    cdef void _add_force(
             self,
             AINDEX *indices,
             AVALUE *parameters,
@@ -454,7 +406,7 @@ cdef class HarmonicPositionRestraint(Interaction):
             for i in range(d):
                 f1[i] += f * rv[i] / r
 
-    cdef AVALUE _get_energy_nogil(
+    cdef AVALUE _get_energy(
             self,
             AINDEX *indices,
             AVALUE *parameters,
@@ -474,7 +426,7 @@ cdef class HarmonicBond(Interaction):
         """Connects two particles with parameters r0 and k"""
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_nogil(
+    cdef void _add_force(
         self,
         AINDEX *indices, AVALUE *parameters,
         System system) nogil:
@@ -499,7 +451,7 @@ cdef class HarmonicBond(Interaction):
             f1[i] += _f
             f2[i] -= _f
 
-    cdef AVALUE _get_energy_nogil(
+    cdef AVALUE _get_energy(
         self,
         AINDEX *indices, AVALUE *parameters,
         System system) nogil:
@@ -530,7 +482,7 @@ cdef class HarmonicAngle(Interaction):
         """Connects three particles with parameters theta0 and k"""
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_nogil(
+    cdef void _add_force(
         self,
         AINDEX *indices, AVALUE *parameters,
         System system) nogil:
@@ -575,7 +527,7 @@ cdef class HarmonicAngle(Interaction):
             f2[i] += f * der2[i]
             f3[i] += f * der3[i]
 
-    cdef AVALUE _get_energy_nogil(
+    cdef AVALUE _get_energy(
         self,
         AINDEX *indices, AVALUE *parameters,
         System system) nogil:
@@ -618,7 +570,7 @@ cdef class CosineHarmonicAngle(Interaction):
         """Connects three particles with parameters theta0 and k"""
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_nogil(
+    cdef void _add_force(
         self,
         AINDEX *indices, AVALUE *parameters,
         System system) nogil:
@@ -663,7 +615,7 @@ cdef class CosineHarmonicAngle(Interaction):
             f2[i] += f * der2[i]
             f3[i] += f * der3[i]
 
-    cdef AVALUE _get_energy_nogil(
+    cdef AVALUE _get_energy(
         self,
         AINDEX *indices, AVALUE *parameters,
         System system) nogil:
@@ -705,7 +657,7 @@ cdef class LJ(Interaction):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    cdef void _add_force_nogil(
+    cdef void _add_force(
         self,
         AINDEX *indices, AVALUE *parameters,
         System system) nogil:
@@ -730,7 +682,7 @@ cdef class LJ(Interaction):
             f1[i] += _f
             f2[i] -= _f
 
-    cdef AVALUE _get_energy_nogil(
+    cdef AVALUE _get_energy(
         self,
         AINDEX *indices, AVALUE *parameters,
         System system) nogil:

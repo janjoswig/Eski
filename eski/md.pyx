@@ -315,10 +315,7 @@ cdef class System:
         cdef AVALUE energy = 0
 
         for interaction in self.interactions:
-            if not interaction.requires_gil:
-                with nogil: energy += interaction._get_total_energy_nogil(self)
-            else:
-                energy += interaction._get_total_energy(self)
+            energy += interaction._get_total_energy(self)
 
         return energy
 
@@ -364,10 +361,7 @@ cdef class System:
         self.reset_forces()
 
         for interaction in self.interactions:
-            if not interaction.requires_gil:
-                with nogil: interaction._add_all_forces_nogil(self)
-            else:
-                interaction._add_all_forces(self)
+            with nogil: interaction._add_all_forces(self)
 
     def simulate(self, n, reset_step=False):
         """Perform a number of MD simulation steps
