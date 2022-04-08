@@ -1,1 +1,1 @@
-System(1 atom (0D))
+System(1 atom, 0D)

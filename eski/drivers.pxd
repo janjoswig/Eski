@@ -17,15 +17,14 @@ cdef class Driver:
         AVALUE *_parameters
         AINDEX _dparam
         AINDEX _n_parameters
-        AVALUE *_internal_resources
-        AINDEX _dres
 
     cdef void _update(self, System system)
     cdef void _on_startup(self, System system)
 
 
 cdef class SteepestDescentMinimiser(Driver):
-    pass
+    cdef:
+        AVALUE _adjusted_tau
 
 
 cdef class EulerIntegrator(Driver):

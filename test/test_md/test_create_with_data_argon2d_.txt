@@ -1,1 +1,1 @@
-System('One lonely argon atom in 2D', 1 atom (2D))
+System('One lonely argon atom in 2D', 1 atom, 2D)

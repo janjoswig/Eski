@@ -8,6 +8,129 @@ import numpy as np
 from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
 
 
+cdef class InteractionProvider:
+
+    cdef IVPTRPAIR get_interaction_by_index(self, AINDEX index, Interaction interaction) nogil: ...
+    cpdef void _check_index_param_consistency(self, Interaction interaction) except *: ...
+    cpdef void _check_interaction_index(self, AINDEX index, Interaction interaction) except *: ...
+    cdef inline AINDEX _n_interactions(self, Interaction interaction) nogil:
+        return self._n_indices // interaction._dindex
+
+    def n_interactions(self, Interaction interaction):
+        return self._n_interactions(interaction)
+
+cdef class NoProvider(InteractionProvider):
+    pass
+
+cdef class NeighboursProvider(InteractionProvider):
+    pass
+
+cdef class ExplicitProvider(InteractionProvider):
+    def __cinit__(
+            self,
+            indices: list,
+            parameters: list,
+            *,
+            **kwargs):
+
+        assert len(indices) > 0, "Empty indices list"
+        assert len(parameters) > 0, "Empty parameters list"
+
+        self._n_indices = len(indices)
+        self._indices = _allocate_and_fill_aindex_array(
+            self._n_indices,
+            indices
+            )
+
+        self._n_parameters = len(parameters)
+        self._parameters = _allocate_and_fill_avalue_array(
+            self._n_parameters,
+            parameters
+            )
+
+    def __dealloc__(self):
+        if self._indices != NULL:
+            free(self._indices)
+
+        if self._parameters != NULL:
+            free(self._parameters)
+
+    cpdef void _check_index_param_consistency(self, Interaction interaction) except *:
+        """Raise error if indices and parameters do not match"""
+
+        if (self._n_indices % interaction._dindex) > 0:
+            raise ValueError(
+                f"Wrong number of 'indices'; must be multiple of {interaction._dindex}"
+                )
+
+        if interaction._dparam == 0:
+            if self._n_parameters == 0:
+                return
+            raise ValueError(
+                f"Force {type(self).__name__!r} takes no parameters"
+                )
+
+        if (self._n_parameters % interaction._dparam) > 0:
+            raise ValueError(
+                f"Wrong number of 'parameters'; must be multiple of {interaction._dparam}"
+                )
+
+        len_no_match = (
+            (self._n_indices / interaction._dindex) !=
+            (self._n_parameters / interaction._dparam)
+        )
+        if len_no_match:
+            raise ValueError(
+                "Length of 'indices' and 'parameters' does not match"
+                )
+
+    cpdef void _check_interaction_index(
+            self, AINDEX index, Interaction interaction) except *:
+        if (index < 0) or (index >= self._n_interactions(interaction)):
+            raise IndexError(
+                "Interaction index out of range"
+                )
+
+    def get_interaction(self, AINDEX index, Interaction interaction):
+        """Return info for interaction
+
+        Args:
+            index: Index of the interaction to get the info for
+            interaction: Interaction type
+
+        Returns:
+            Dictionary with keys according to
+            :obj:`self._index_names` and :obj:`self._param_names` and
+            corresponding values
+        """
+
+        self._check_interaction_index(index, interaction)
+
+        cdef dict info = {}
+        cdef AINDEX i
+        cdef str name
+
+        for i, name in enumerate(interaction._index_names):
+            info[name] = self._indices[index * interaction._dindex + i]
+
+        for i, name in enumerate(interaction._param_names):
+            info[name] = self._parameters[index * interaction._dparam + i]
+
+        return info
+
+    cdef IVPTRPAIR get_interaction_by_index(
+            self, AINDEX index, Interaction interaction) nogil:
+
+        cdef IVPTRPAIR ivpair
+
+        ivpair = make_pair(
+            <AINDEX*>&self._indices[index * interaction._dindex],
+            <AVALUE*>&self._parameters[index * interaction._dparam]
+            )
+
+        return ivpair
+
+
 cdef class Interaction:
     """Base class for interaction to evaluate
 
@@ -29,54 +152,26 @@ cdef class Interaction:
     _default_index_names = ["p1"]
     _default_param_names = ["x"]
     _default_id = 0
+    _default_requires_gil = False
 
     def __cinit__(
             self,
-            indices: Optional[list] = None,
-            parameters: Optional[list] = None,
+            provider=None,
             *,
             group: int = 0,
             _id: Optional[int] = None,
             index_names: Optional[list] = None,
             param_names: Optional[list] = None,
-            requires_gil: bool = False,
             **kwargs):
 
-        cdef AINDEX i, index
-        cdef AVALUE param
-
-        if indices is not None:
-            self._n_indices = len(indices)
-            assert self._n_indices > 0, "Empty indices list"
-            self._indices = self._allocate_and_fill_aindex_array(
-                self._n_indices,
-                indices)
-        else:
-            self._n_indices = 0
-
-        if parameters is not None:
-            self._n_parameters = len(parameters)
-            assert self._n_parameters > 0, "Empty parameters list"
-            self._parameters = self._allocate_and_fill_avalue_array(
-                self._n_parameters,
-                parameters)
-        else:
-            self._n_parameters = 0
+        if provider is None:
+            self.provider = NoProvider()
 
         self.group = group
-        self.requires_gil = requires_gil
-
-    def __dealloc__(self):
-        if self._indices != NULL:
-            free(self._indices)
-
-        if self._parameters != NULL:
-            free(self._parameters)
 
     def __init__(
             self,
-            indices: Optional[list] = None,
-            parameters: Optional[list] = None,
+            provider=None,
             *,
             group: int = 0,
             _id: Optional[int] = None,
@@ -95,180 +190,72 @@ cdef class Interaction:
         self._dindex = len(self._index_names)
         self._dparam = len(self._param_names)
 
-        self._check_index_param_consistency()
+        self.provider = provider
+        self.provider._check_index_param_consistency(self)
 
         if _id is None:
             _id = self._default_id
         self._id = _id
 
+        self.requires_gil = self._default_requires_gil
+
     def __repr__(self):
         attr_repr = ", ".join(
             [
                 f"group={self.group}",
-                f"n_interactions={self.n_interactions}"
             ]
         )
         return f"{self.__class__.__name__}({attr_repr})"
+
+    @classmethod
+    def from_explicit(
+        cls,
+        indices: list, parameters: list, *,
+        provider_kwargs=None, **kwargs):
+
+        if provider_kwargs is None:
+            provider_kwargs = {}
+
+        return cls(
+            ExplicitProvider(indices, parameters, **provider_kwargs),
+            **kwargs
+            )
 
     @property
     def id(self):
        return self._id
 
-    @property
-    def n_interactions(self):
-        return self._n_indices // self._dindex
-
-    @classmethod
-    def from_mappings(
-            cls,
-            interactions: Iterable[Mapping[str, Union[float, int]]],
-            group=0, _id=None,
-            index_names=None, param_names=None, **kwargs):
-
-        if index_names is None:
-            index_names = cls._default_index_names
-
-        if param_names is None:
-            param_names = cls._default_param_names
-
-        indices = []
-        parameters = []
-        for mapping in interactions:
-            for name in index_names:
-                indices.append(mapping[name])
-
-            for name in param_names:
-                parameters.append(mapping[name])
-
-        return cls(
-            indices, parameters,
-            group=group, _id=_id,
-            index_names=index_names,
-            param_names=param_names,
-            **kwargs
-            )
-
-    cdef AVALUE* _allocate_and_fill_avalue_array(
-            self, AINDEX n, list values):
-
-        cdef AVALUE *ptr
-        cdef AINDEX i
-
-        ptr = <AVALUE*>malloc(n * sizeof(AVALUE))
-
-        if ptr == NULL:
-            raise MemoryError()
-
-        for i in range(n):
-            ptr[i] = values[i]
-
-        return ptr
-
-    cdef AINDEX* _allocate_and_fill_aindex_array(
-            self, AINDEX n, list values):
-
-        cdef AINDEX *ptr
-        cdef AINDEX i
-
-        ptr = <AINDEX*>malloc(n * sizeof(AINDEX))
-
-        if ptr == NULL:
-            raise MemoryError()
-
-        for i in range(n):
-            ptr[i] = values[i]
-
-        return ptr
-
-    cpdef void _check_index_param_consistency(self) except *:
-        """Raise error if indices and parameters do not match"""
-
-        if (self._n_indices % self._dindex) > 0:
-            raise ValueError(
-                f"Wrong number of 'indices'; must be multiple of {self._dindex}"
-                )
-
-        if self._dparam == 0:
-            if self._n_parameters == 0:
-                return
-            raise ValueError(
-                f"Force {type(self).__name__!r} takes no parameters"
-                )
-
-        if (self._n_parameters % self._dparam) > 0:
-            raise ValueError(
-                f"Wrong number of 'parameters'; must be multiple of {self._dparam}"
-                )
-
-        len_no_match = (
-            (self._n_indices / self._dindex) !=
-            (self._n_parameters / self._dparam)
-        )
-        if len_no_match:
-            raise ValueError(
-                "Length of 'indices' and 'parameters' does not match"
-                )
-
-    def get_interaction(self, AINDEX index):
-        """Return info for interaction
-
-        Args:
-            index: Index of the interaction to get the info for
-
-        Returns:
-            Dictionary with keys according to
-            :obj:`self._index_names` and :obj:`self._param_names` and
-            corresponding values
-        """
-
-        self._check_interaction_index(index)
-
-        cdef dict info = {}
-        cdef AINDEX i
-        cdef str name
-
-        for i, name in enumerate(self._index_names):
-            info[name] = self._indices[index * self._dindex + i]
-
-        for i, name in enumerate(self._param_names):
-            info[name] = self._parameters[index * self._dparam + i]
-
-        return info
-
-    cpdef void _check_interaction_index(self, AINDEX index) except *:
-        if (index < 0) or (index >= self.n_interactions):
-            raise IndexError(
-                "Interaction index out of range"
-                )
-
     cdef void _add_all_forces(self, System system):
         cdef AINDEX index
+        cdef IVPTRPAIR ivpair
 
-        for index in range(self._n_indices // self._dindex):
-            self._add_force_by_index(index, system)
+        for index in range(self.provider._n_interactions(self)):
+            ivpair = self.provider.get_interaction_by_index(index, self)
+            self._add_force(ivpair.first, ivpair.second, system)
 
     cdef void _add_all_forces_nogil(self, System system) nogil:
-
         cdef AINDEX index
+        cdef IVPTRPAIR ivpair
 
-        for index in range(self._n_indices // self._dindex):
-            self._add_force_by_index_nogil(index, system)
+        for index in range(self.provider._n_interactions(self)):
+            ivpair = self.provider.get_interaction_by_index(index, self)
+            self._add_force_nogil(ivpair.first, ivpair.second, system)
 
-    def add_force(self, indices: list, parameters: list, system):
+    def add_force(self, indices: list, parameters: list, System system):
         cdef AINDEX i
 
-        cdef AINDEX* indices_ptr = self._allocate_and_fill_aindex_array(
+        cdef AINDEX* indices_ptr = _allocate_and_fill_aindex_array(
             len(indices), indices
             )
 
-        cdef AVALUE* parameters_ptr = self._allocate_and_fill_avalue_array(
+        cdef AVALUE* parameters_ptr = _allocate_and_fill_avalue_array(
             len(parameters), parameters
             )
 
         if self.requires_gil:
             self._add_force(indices_ptr, parameters_ptr, system)
         else:
-            self._add_force_nogil(indices_ptr, parameters_ptr, system)
+            with nogil: self._add_force_nogil(indices_ptr, parameters_ptr, system)
 
         free(indices_ptr)
         free(parameters_ptr)
@@ -285,55 +272,15 @@ cdef class Interaction:
         AVALUE *parameters,
         System system) nogil: ...
 
-    cdef void _add_force_by_index(
-            self,
-            AINDEX index,
-            System system):
-        """Evaluate force with indices and parameters from interaction index
-
-        Note:
-            Calls implementation :func:`~eski.md.Interaction._add_force`
-
-        Args:
-            index: Index of interaction
-            system: Instance of :class:`eski.md.System`
-        """
-
-        self._add_force(
-            &self._indices[index * self._dindex],
-            &self._parameters[index * self._dparam],
-            system
-            )
-
-    cdef void _add_force_by_index_nogil(
-            self,
-            AINDEX index,
-            System system) nogil:
-        """Evaluate force with indices and parameters from interaction index
-
-        Note:
-            Calls nogil implementation :func:`~eski.md.Interaction._add_force_nogil`
-
-        Args:
-            index: Index of interaction
-            system: Instance of :class:`eski.md.System`
-        """
-
-        self._add_force_nogil(
-            &self._indices[index * self._dindex],
-            &self._parameters[index * self._dparam],
-            system
-            )
-
     def  get_energy(self, indices: list, parameters: list, system):
         cdef AINDEX i
         cdef AVALUE energy
 
-        cdef AINDEX* indices_ptr = self._allocate_and_fill_aindex_array(
+        cdef AINDEX* indices_ptr = _allocate_and_fill_aindex_array(
             len(indices), indices
             )
 
-        cdef AVALUE* parameters_ptr = self._allocate_and_fill_avalue_array(
+        cdef AVALUE* parameters_ptr = _allocate_and_fill_avalue_array(
             len(parameters), parameters
             )
 
@@ -363,10 +310,12 @@ cdef class Interaction:
             self,  System system):
 
         cdef AINDEX index
+        cdef IVPTRPAIR ivpair
         cdef AVALUE energy = 0
 
-        for index in range(self._n_indices / self._dindex):
-            energy = energy + self._get_energy_by_index(index, system)
+        for index in range(self.provider._n_interactions(self)):
+            ivpair = self.provider.get_interaction_by_index(index, self)
+            energy = energy + self._get_energy(ivpair.first, ivpair.second, system)
 
         return energy
 
@@ -374,34 +323,18 @@ cdef class Interaction:
             self,  System system) nogil:
 
         cdef AINDEX index
+        cdef IVPTRPAIR ivpair
         cdef AVALUE energy = 0
 
-        for index in range(self._n_indices / self._dindex):
-            energy = energy + self._get_energy_by_index_nogil(index, system)
+        for index in range(self.provider._n_interactions(self)):
+            ivpair = self.provider.get_interaction_by_index(index, self)
+            energy = energy + self._get_energy_nogil(ivpair.first, ivpair.second, system)
 
         return energy
 
-    cdef AVALUE _get_energy_by_index(
-            self,
-            AINDEX index,
-            System system):
 
-        return self._get_energy(
-            &self._indices[index * self._dindex],
-            &self._parameters[index * self._dparam],
-            system
-            )
-
-    cdef AVALUE _get_energy_by_index_nogil(
-            self,
-            AINDEX index,
-            System system) nogil:
-
-        return self._get_energy_nogil(
-            &self._indices[index * self._dindex],
-            &self._parameters[index * self._dparam],
-            system
-            )
+cdef class CustomInteraction(Interaction):
+    _default_requires_gil = True
 
 
 cdef class ConstantBias(Interaction):

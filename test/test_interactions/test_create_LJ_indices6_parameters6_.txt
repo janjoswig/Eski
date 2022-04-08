@@ -1,1 +1,0 @@
-LJ(group=0, n_interactions=1)

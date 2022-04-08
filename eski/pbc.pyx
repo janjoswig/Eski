@@ -53,7 +53,7 @@ cdef class OrthorhombicPBC(PBCHandler):
         cdef AINDEX i
 
         for i in range(dim_per_atom):
-            rvptr[i] = p1ptr[i] - p2ptr[i]
+            rvptr[i] = p2ptr[i] - p1ptr[i]  # TODO: Test this
             rvptr[i] -= self._bounds[i] * round(rvptr[i] / self._bounds[i])
 
 

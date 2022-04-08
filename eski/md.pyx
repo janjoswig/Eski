@@ -56,7 +56,7 @@ cdef class System:
             dtype=P_AVALUE,
             order="c"
             )
-        self._configuration_ptr =  &self._configuration[0]
+        self._configuration_ptr = &self._configuration[0]
 
         n_dim = self._configuration.shape[0]
         assert n_dim  == n_atoms * dim_per_atom, f"Number of dimensions ({n_dim}) does not match dimensions per atoms ({dim_per_atom})"
@@ -93,7 +93,7 @@ cdef class System:
                 f"but has dimensionality {velocities.ndim}"
                 )
 
-        assert velocities.shape[0] == configuration.shape[0], f"Shape of 'velocities' {velocities.shape} does not match 'configuration' {configuration.shape[0]}"
+        assert velocities.shape[0] == configuration.shape[0], f"Shape of 'velocities' {velocities.shape} does not match 'configuration' {configuration.shape}"
 
         self._velocities = np.array(
             velocities,
@@ -101,14 +101,14 @@ cdef class System:
             dtype=P_AVALUE,
             order="c"
             )
-        self._velocities_ptr =  &self._velocities[0]
+        self._velocities_ptr = &self._velocities[0]
 
         self._forces = np.zeros_like(
             configuration,
             dtype=P_AVALUE,
             order="c"
             )
-        self._forces_ptr =  &self._forces[0]
+        self._forces_ptr = &self._forces[0]
 
         if interactions is None:
             interactions = []
@@ -145,13 +145,6 @@ cdef class System:
     @property
     def configuration(self):
         return np.asarray(self._configuration)
-
-    def set_configuration(self, value):
-        """Set a new configuration
-
-        Maybe important for simulations where the number of particles
-        can change
-        """
 
     @property
     def velocities(self):
@@ -196,7 +189,7 @@ cdef class System:
         else:
             atoms_str = f"{self.n_atoms} atoms"
 
-        dim_str = f" ({self.dim_per_atom}D)"
+        dim_str = f", {self.dim_per_atom}D"
 
         return f"{self.__class__.__name__}({desc_str}{atoms_str}{dim_str})"
 
@@ -318,7 +311,7 @@ cdef class System:
 
         for interaction in self.interactions:
             if not interaction.requires_gil:
-                energy += interaction._get_total_energy_nogil(self)
+                with nogil: energy += interaction._get_total_energy_nogil(self)
             else:
                 energy += interaction._get_total_energy(self)
 
@@ -367,7 +360,7 @@ cdef class System:
 
         for interaction in self.interactions:
             if not interaction.requires_gil:
-                interaction._add_all_forces_nogil(self)
+                with nogil: interaction._add_all_forces_nogil(self)
             else:
                 interaction._add_all_forces(self)
 

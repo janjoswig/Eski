@@ -10,7 +10,6 @@ class TestDriver:
     @pytest.mark.parametrize(
         "driver_type,parameters",
         [
-            (drivers.Driver, []),
             pytest.param(
                 drivers.Driver, [0],
                 marks=pytest.mark.raises(exception=ValueError)
@@ -55,13 +54,7 @@ class TestDriver:
             [[0, 0, 0],
              [0, 0, 0],
              [1, 0, 0],
-             [0, 0, 1]], order="c", dtype=float
-            ).reshape(-1)
-        forces = np.array(
-            [[0, 0, 0],
-             [1, 0, 0],
-             [0, 0, 0],
-             [0, 0, -1]], order="c", dtype=float
+             [0, 0, 2]], order="c", dtype=float
             ).reshape(-1)
 
         system = md.System(
@@ -81,10 +74,10 @@ class TestDriver:
 
         water = system_from_model("screwed_water")
         water.interactions = [
-            interactions.HarmonicBond(
+            interactions.HarmonicBond.from_explicit(
                 [0, 1, 0, 2], [0.09572, 462750.4, 0.09572, 462750.4]
                 ),
-            interactions.HarmonicAngle(
+            interactions.HarmonicAngle.from_explicit(
                 [1, 0, 2], [np.radians(104.520), 836.800]
                 )
             ]

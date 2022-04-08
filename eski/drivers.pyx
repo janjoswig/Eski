@@ -23,7 +23,6 @@ cdef class Driver:
 
     _param_names = []
     _resource_requirements = []
-    _internal_resource_names = []
     _param_defaults = {}
 
     def __cinit__(self, parameters: list):
@@ -46,9 +45,6 @@ cdef class Driver:
 
         if self._parameters != NULL:
             free(self._parameters)
-
-        if self._internal_resources != NULL:
-            free(self._internal_resources)
 
     def __init__(self, *args, **kwargs):
         self._dparam = 0
@@ -91,8 +87,7 @@ cdef class Driver:
             )
         return dict(zip(self._param_names, pgenerator))
 
-    def update(
-            self, System system):
+    def update(self, System system):
         self._update(system)
 
     cdef void _update(
@@ -117,8 +112,7 @@ cdef class SteepestDescentMinimiser(Driver):
     """
 
     _param_names = ["tau", "tolerance", "tuneup", "tunedown"]
-    _resource_requirements = ["configuration"]
-    _internal_resource_names = ["tau_adjusted"]
+    _resource_requirements = ["configuration", "prev_epot"]
     _param_defaults = {
         "tau": 0.01,
         "tolerance": 100,
@@ -140,13 +134,6 @@ cdef class SteepestDescentMinimiser(Driver):
         self._check_param_consistency()
 
     cdef void _on_startup(self, System system):
-        self._dres = 1
-
-        self._internal_resources = <AVALUE*>malloc(
-            self._dres * sizeof(AVALUE)
-            )
-        if self._internal_resources == NULL:
-            raise MemoryError()
 
         system._resources.configuration = np.zeros_like(
             system._configuration,
@@ -154,12 +141,11 @@ cdef class SteepestDescentMinimiser(Driver):
             order="c"
             )
         system._resources.prev_epot = system.potential_energy()
-        self._internal_resources[0] = self._parameters[0]
+        self._adjusted_tau = self._parameters[0]
 
     cdef void _update(self, System system):
 
         cdef AINDEX index, d, i
-        cdef AVALUE tau = self._internal_resources[0]
         cdef AVALUE tolerance = self._parameters[1]
         cdef AVALUE tuneup = self._parameters[2]
         cdef AVALUE tunedown = self._parameters[3]
@@ -180,7 +166,7 @@ cdef class SteepestDescentMinimiser(Driver):
                         i = index * system._dim_per_atom + d
                         trial_configuration[i] = (
                             system._configuration[i]
-                            + system._forces[i] / max_f * tau
+                            + system._forces[i] / max_f * self._adjusted_tau
                             )
 
             system._configuration_ptr = trial_configuration
@@ -188,14 +174,14 @@ cdef class SteepestDescentMinimiser(Driver):
         epot = system.potential_energy()
 
         if epot < system._resources.prev_epot:
-            self._internal_resources[0] *= tuneup
+            self._adjusted_tau *= tuneup
             system._resources.prev_epot = epot
 
             with nogil:
                 for i in prange(system._n_dim):
                     system._configuration[i] = trial_configuration[i]
         else:
-            self._internal_resources[0] *= tunedown
+            self._adjusted_tau *= tunedown
 
         system._configuration_ptr = &system._configuration[0]
 

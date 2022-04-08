@@ -1,1 +1,1 @@
-System('Two argon atoms in 3D', 2 atoms (3D))
+System('Two argon atoms in 3D', 2 atoms, 3D)

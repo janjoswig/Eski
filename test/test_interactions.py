@@ -9,10 +9,9 @@ class TestInteractions:
     @pytest.mark.parametrize(
         "interaction_type,indices,parameters",
         [
-            (interactions.Interaction, [1, 2, 3], [1.0, 1.0, 1.0]),
             pytest.param(
-                interactions.Interaction, [1, 2, 3], [1.0],
-                marks=pytest.mark.raises(exception=ValueError)
+                interactions.Interaction, [], [],
+                marks=pytest.mark.raises(exception=AssertionError)
                 ),
             pytest.param(
                 interactions.HarmonicBond, [1, 2, 3], [0.1, 0.5],
@@ -30,11 +29,13 @@ class TestInteractions:
             (interactions.LJ, [1, 2], [0.1, 0.5])
         ]
     )
-    def test_create(self, interaction_type, indices, parameters, file_regression):
-        interaction = interaction_type(indices, parameters)
+    def test_create_from_explicit(
+            self, interaction_type, indices, parameters, file_regression):
+        interaction = interaction_type.from_explicit(indices, parameters)
         file_regression.check(repr(interaction))
         assert isinstance(interaction.id, int)
 
+    @pytest.mark.skip(reason="Not (re-)implement")
     @pytest.mark.parametrize(
         "interaction_type,mappings",
         [
@@ -70,9 +71,10 @@ class TestInteractions:
             )
         ]
     )
-    def test_get_interaction(self, interaction_type, indices, parameters, i, expected):
-        interaction = interaction_type(indices, parameters)
-        assert expected == interaction.get_interaction(i)
+    def test_get_interaction(
+            self, interaction_type, indices, parameters, i, expected):
+        interaction = interaction_type.from_explicit(indices, parameters)
+        assert expected == interaction.provider.get_interaction(i, interaction)
 
     def test_screen_harmonic_bond(
             self, num_regression):
@@ -82,7 +84,7 @@ class TestInteractions:
         energies = []
         for r0 in r0_list:
             system.interactions = [
-                interactions.HarmonicBond([0, 1], [r0, 259408])
+                interactions.HarmonicBond.from_explicit([0, 1], [r0, 259408])
                 ]
             energies.append(system.potential_energy())
 
@@ -93,7 +95,7 @@ class TestInteractions:
     def test_add_all_forces_cc1d(self, num_regression):
         system = models.system_from_model("cc1d")
         system.interactions = [
-            interactions.HarmonicBond([0, 1], [0.16, 259408])
+            interactions.HarmonicBond.from_explicit([0, 1], [0.16, 259408])
             ]
         system.add_all_forces()
         num_regression.check({
@@ -103,7 +105,7 @@ class TestInteractions:
     def test_add_all_forces_screwed_water(self, num_regression):
         system = models.system_from_model("screwed_water")
         system.interactions = [
-            interactions.HarmonicBond(
+            interactions.HarmonicBond.from_explicit(
                 [0, 1, 0, 2],  [0.09572, 462750.4, 0.09572, 462750.4]
                 )
             ]
