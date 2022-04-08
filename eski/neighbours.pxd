@@ -16,6 +16,9 @@ cdef class Neighbours:
     cdef void _update(self, System system) nogil
     cdef bint needs_update(self, System system) nogil
 
+cdef class NoNeighbours(Neighbours):
+    pass
+
 cdef class NeighboursVerletBruteForce(Neighbours):
     cdef:
         vector[AINDEX] _neighbourlist

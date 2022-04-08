@@ -45,7 +45,12 @@ cdef class Neighbours:
     def update(self, System system):
         self._update(system)
 
-    cdef bint needs_update(self, System system) nogil: ...
+    cdef bint needs_update(self, System system) nogil:
+        return False
+
+
+cdef class NoNeighbours(Neighbours):
+    pass
 
 
 cdef class NeighboursVerletBruteForce(Neighbours):
@@ -82,7 +87,7 @@ cdef class NeighboursVerletBruteForce(Neighbours):
                 c1 = &system._configuration_ptr[a * d]
                 c2 = &system._configuration_ptr[b * d]
 
-                system._pbc._pbc_distance(rv, c1, c2, d)
+                system.pbc._pbc_distance(rv, c1, c2, d)
                 r = _norm2(rv, d)
 
                 if r <= buffer:

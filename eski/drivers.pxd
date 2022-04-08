@@ -15,7 +15,6 @@ from eski.interactions cimport Interaction
 cdef class Driver:
     cdef:
         AVALUE *_parameters
-        AINDEX _dparam
         AINDEX _n_parameters
 
     cdef void _update(self, System system)

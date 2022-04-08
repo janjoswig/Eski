@@ -47,7 +47,6 @@ cdef class Driver:
             free(self._parameters)
 
     def __init__(self, *args, **kwargs):
-        self._dparam = 0
         self._check_param_consistency()
 
     def __repr__(self):
@@ -94,13 +93,15 @@ cdef class Driver:
             self, System system): ...
 
     def _check_param_consistency(self):
-        if self._n_parameters != self._dparam:
-            numerus_expect = "parameter" if self._dparam == 1 else "parameters"
+        cdef AINDEX dparam = len(self._param_names)
+
+        if self._n_parameters != dparam:
+            numerus_expect = "parameter" if dparam == 1 else "parameters"
             numerus_given = "was" if self._n_parameters == 1 else "were"
 
             raise ValueError(
                 f"driver {type(self).__name__!r} "
-                f"takes {self._dparam} {numerus_expect} "
+                f"takes {dparam} {numerus_expect} "
                 f"but {self._n_parameters} {numerus_given} given"
                 )
 
@@ -130,7 +131,6 @@ cdef class SteepestDescentMinimiser(Driver):
             tuneup: factor by which to increase tau on accepted step
             tunelow: factor by which to decrease tau on rejected step
         """
-        self._dparam = 4
         self._check_param_consistency()
 
     cdef void _on_startup(self, System system):
@@ -201,10 +201,6 @@ cdef class EulerIntegrator(Driver):
         "dt": 0.001
     }
 
-    def __init__(self, *args, **kwargs):
-        self._dparam = 1
-        self._check_param_consistency()
-
     cdef void _update(self, System system):
 
         cdef AINDEX index, d, i
@@ -252,10 +248,6 @@ cdef class EulerMaruyamaIntegrator(Driver):
         "friction": 1000,
         "T": 300
     }
-
-    def __init__(self, *args, **kwargs):
-        self._dparam = 3
-        self._check_param_consistency()
 
     cdef void _update(
             self,

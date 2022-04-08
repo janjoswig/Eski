@@ -31,7 +31,11 @@ cdef class NoPBC(PBCHandler):
 cdef class OrthorhombicPBC(PBCHandler):
 
     def __cinit__(self, bounds):
+        """Define orthorhombic periodic boundary conditions
 
+        Args:
+            bounds: Box length in each dimension
+        """
         self._bounds = bounds
 
     cdef void _apply_pbc(self, System system) nogil:

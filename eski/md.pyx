@@ -25,6 +25,7 @@ cdef class System:
             drivers=None,
             reporters=None,
             pbc=None,
+            neighbours=None,
             desc=None,
             copy=False):
         """Init docstring"""
@@ -126,7 +127,11 @@ cdef class System:
 
         if pbc is None:
             pbc = NoPBC()
-        self._pbc = pbc
+        self.pbc = pbc
+
+        if neighbours is None:
+            neighbours = NoNeighbours([])
+        self.neighbours = neighbours
 
         self._step = 0
         self._target_step = 0
@@ -220,7 +225,7 @@ cdef class System:
         cdef AINDEX i
         cdef AVALUE r = 0
 
-        self._pbc._pbc_distance(
+        self.pbc._pbc_distance(
             self._resources.rva,
             &self._configuration_ptr[a * self._dim_per_atom],
             &self._configuration_ptr[b * self._dim_per_atom],
@@ -402,7 +407,7 @@ cdef class System:
             for driver in self.drivers:
                 driver._update(self)
 
-            self._pbc._apply_pbc(self)
+            self.pbc._apply_pbc(self)
 
             for reporter in self.reporters:
                 if (self._step % reporter.interval) == 0:

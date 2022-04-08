@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from eski import atoms, md, pbc
+from eski import atoms, md, pbc, neighbours
 
 
 class TestSystem:
@@ -16,7 +16,8 @@ class TestSystem:
         assert isinstance(registered_system.desc, str)
         assert isinstance(registered_system.interactions, list)
         assert isinstance(registered_system.reporters, list)
-        assert isinstance(registered_system._pbc, pbc.PBCHandler)
+        assert isinstance(registered_system.pbc, pbc.PBCHandler)
+        assert isinstance(registered_system.neighbours, neighbours.Neighbours)
 
         s = registered_system.configuration.shape
         assert s == registered_system.velocities.shape

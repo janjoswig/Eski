@@ -446,7 +446,7 @@ cdef class HarmonicPositionRestraint(Interaction):
         cdef AVALUE *anchor = &parameters[2]
         cdef AVALUE *rv = system._resources.rva
 
-        system._pbc._pbc_distance(rv, c1, anchor, d)
+        system.pbc._pbc_distance(rv, c1, anchor, d)
         r = _norm2(rv, d)
 
         if r != 0:
@@ -490,7 +490,7 @@ cdef class HarmonicBond(Interaction):
         cdef AVALUE k = parameters[1]
         cdef AVALUE *rv = system._resources.rva
 
-        system._pbc._pbc_distance(rv, c1, c2, d)
+        system.pbc._pbc_distance(rv, c1, c2, d)
         r = _norm2(rv, d)
 
         f = -k * (r - r0)
@@ -513,7 +513,7 @@ cdef class HarmonicBond(Interaction):
         cdef AVALUE k = parameters[1]
         cdef AVALUE *rv = system._resources.rva
 
-        system._pbc._pbc_distance(rv, c1, c2, d)
+        system.pbc._pbc_distance(rv, c1, c2, d)
         r = _norm2(rv, d)
 
         return 0.5 * k * cpow(r - r0, 2)
@@ -553,9 +553,9 @@ cdef class HarmonicAngle(Interaction):
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
-        system._pbc._pbc_distance(rva, c1, c2, d)
+        system.pbc._pbc_distance(rva, c1, c2, d)
         ra = _norm2(rva, d)
-        system._pbc._pbc_distance(rvb, c3, c2, d)
+        system.pbc._pbc_distance(rvb, c3, c2, d)
         rb = _norm2(rvb, d)
 
         cos_theta = 0
@@ -595,9 +595,9 @@ cdef class HarmonicAngle(Interaction):
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
-        system._pbc._pbc_distance(rva, c1, c2, d)
+        system.pbc._pbc_distance(rva, c1, c2, d)
         ra = _norm2(rva, d)
-        system._pbc._pbc_distance(rvb, c3, c2, d)
+        system.pbc._pbc_distance(rvb, c3, c2, d)
         rb = _norm2(rvb, d)
 
         cos_theta = 0
@@ -641,9 +641,9 @@ cdef class CosineHarmonicAngle(Interaction):
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
-        system._pbc._pbc_distance(rva, c1, c2, d)
+        system.pbc._pbc_distance(rva, c1, c2, d)
         ra = _norm2(rva, d)
-        system._pbc._pbc_distance(rvb, c3, c2, d)
+        system.pbc._pbc_distance(rvb, c3, c2, d)
         rb = _norm2(rvb, d)
 
         cos_theta = 0
@@ -683,9 +683,9 @@ cdef class CosineHarmonicAngle(Interaction):
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
-        system._pbc._pbc_distance(rva, c1, c2, d)
+        system.pbc._pbc_distance(rva, c1, c2, d)
         ra = _norm2(rva, d)
-        system._pbc._pbc_distance(rvb, c3, c2, d)
+        system.pbc._pbc_distance(rvb, c3, c2, d)
         rb = _norm2(rvb, d)
 
         cos_theta = 0
@@ -721,7 +721,7 @@ cdef class LJ(Interaction):
         cdef AVALUE e = parameters[1]
         cdef AVALUE *rv = system._resources.rva
 
-        system._pbc._pbc_distance(rv, c1, c2, d)
+        system.pbc._pbc_distance(rv, c1, c2, d)
         r = _norm2(rv, d)
 
         f = 24 * e / r * (2 * cpow(s / r, 12) - cpow(s / r, 6))
@@ -744,7 +744,7 @@ cdef class LJ(Interaction):
         cdef AVALUE e = parameters[1]
         cdef AVALUE *rv = system._resources.rva
 
-        system._pbc._pbc_distance(rv, c1, c2, d)
+        system.pbc._pbc_distance(rv, c1, c2, d)
         r = _norm2(rv, d)
 
         return 4 * e * (cpow(s / r, 12) - cpow(s / r, 6))

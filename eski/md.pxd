@@ -9,6 +9,7 @@ from eski.interactions cimport Interaction
 from eski.drivers cimport Driver
 from eski.atoms cimport Atom, InternalAtom, make_internal_atoms
 from eski.pbc cimport PBCHandler, NoPBC
+from eski.neighbours cimport Neighbours, NoNeighbours
 from eski.metrics cimport _random_gaussian, _norm2
 
 
@@ -33,7 +34,8 @@ cdef class System:
         list interactions
         list drivers
         list reporters
-        PBCHandler _pbc
+        PBCHandler pbc
+        Neighbours neighbours
 
     cdef:
         AVALUE[::1] _configuration
