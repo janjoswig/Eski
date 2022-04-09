@@ -156,7 +156,6 @@ cdef class SteepestDescentMinimiser(Driver):
         system.add_all_forces()
 
         with nogil:
-
             max_f = _get_max(system._forces_ptr, system._n_atoms * system._dim_per_atom)
             if max_f <= tolerance:
                 system._stop = True
@@ -177,9 +176,8 @@ cdef class SteepestDescentMinimiser(Driver):
             self._adjusted_tau *= tuneup
             system._resources.prev_epot = epot
 
-            with nogil:
-                for i in prange(system._n_dim):
-                    system._configuration[i] = trial_configuration[i]
+            for i in prange(system._n_dim, nogil=True):
+                system._configuration[i] = trial_configuration[i]
         else:
             self._adjusted_tau *= tunedown
 
@@ -214,23 +212,22 @@ cdef class EulerIntegrator(Driver):
 
         system.add_all_forces()
 
-        with nogil:
-            for index in prange(system._n_atoms):
-                if atoms[index].mass <= 0:
-                    continue
+        for index in prange(system._n_atoms, nogil=True):
+            if atoms[index].mass <= 0:
+                continue
 
-                for d in range(dim_per_atom):
-                    i = index * dim_per_atom + d
-                    configuration[i] = (
-                        configuration[i]
-                        + velocities[i] * dt
-                        + forces[i] * dt**2 / (2 * atoms[index].mass)
-                        )
-                    velocities[i] = (
-                        velocities[i]
-                        + forces[i]
-                        * dt / atoms[index].mass
-                        )
+            for d in range(dim_per_atom):
+                i = index * dim_per_atom + d
+                configuration[i] = (
+                    configuration[i]
+                    + velocities[i] * dt
+                    + forces[i] * dt**2 / (2 * atoms[index].mass)
+                    )
+                velocities[i] = (
+                    velocities[i]
+                    + forces[i]
+                    * dt / atoms[index].mass
+                    )
 
 
 cdef class EulerMaruyamaIntegrator(Driver):
@@ -267,17 +264,16 @@ cdef class EulerMaruyamaIntegrator(Driver):
 
         system.add_all_forces()
 
-        with nogil:
-            for index in prange(system._n_atoms):
-                if atoms[index].mass <= 0:
-                    continue
+        for index in prange(system._n_atoms, nogil=True):
+            if atoms[index].mass <= 0:
+                continue
 
-                sigma = csqrt(2 * constants.R * T / atoms[index].mass / friction)
+            sigma = csqrt(2 * constants.R * T / atoms[index].mass / friction)
 
-                for d in range(dim_per_atom):
-                    i = index * dim_per_atom + d
-                    configuration[i] = (
-                        configuration[i]
-                        + forces[i] * dt / atoms[index].mass / friction
-                        + sigma * _random_gaussian() * sqrt_dt
+            for d in range(dim_per_atom):
+                i = index * dim_per_atom + d
+                configuration[i] = (
+                    configuration[i]
+                    + forces[i] * dt / atoms[index].mass / friction
+                    + sigma * _random_gaussian() * sqrt_dt
                         )
