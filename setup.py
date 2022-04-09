@@ -6,7 +6,7 @@ from Cython.Build import cythonize
 from Cython.Compiler import Options
 import numpy as np
 
-Options.fast_fail = False
+Options.fast_fail = True
 
 cython_macros: List[Tuple[str, Optional[str]]] = [
     ("NPY_NO_DEPRECATED_API", "NPY_1_7_API_VERSION")

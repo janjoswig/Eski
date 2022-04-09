@@ -74,7 +74,7 @@ class TestInteractions:
     def test_get_interaction(
             self, interaction_type, indices, parameters, i, expected):
         interaction = interaction_type.from_explicit(indices, parameters)
-        assert expected == interaction.provider.get_interaction(i, interaction)
+        assert expected == interaction.provider.get_interaction(i)
 
     def test_screen_harmonic_bond(
             self, num_regression):

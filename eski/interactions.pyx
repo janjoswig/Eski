@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Iterable, Mapping
 from typing import Optional, Union
 
-cimport cython
+from cython.parallel cimport prange
 import numpy as np
 
 from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
@@ -10,14 +10,9 @@ from eski.primitive_types import P_AINDEX, P_AVALUE, P_ABOOL
 
 cdef class InteractionProvider:
 
-    cdef (AINDEX*, AVALUE*) get_interaction_by_index(self, AINDEX index, Interaction interaction) nogil: ...
-    cpdef void _check_index_param_consistency(self, Interaction interaction) except *: ...
-    cpdef void _check_interaction_index(self, AINDEX index, Interaction interaction) except *: ...
-    cdef inline AINDEX _n_interactions(self, Interaction interaction) nogil:
-        return self._n_indices // interaction._dindex
-
-    def n_interactions(self, Interaction interaction):
-        return self._n_interactions(interaction)
+    cpdef void _check_consistency(self) except *: ...
+    cdef (AINDEX*, AVALUE*) _next_interaction(self) nogil: ...
+    cdef void _reset_iteration(self) nogil: ...
 
 cdef class NoProvider(InteractionProvider):
     pass
@@ -55,43 +50,43 @@ cdef class ExplicitProvider(InteractionProvider):
         if self._parameters != NULL:
             free(self._parameters)
 
-    cpdef void _check_index_param_consistency(self, Interaction interaction) except *:
+    cpdef void _check_consistency(self) except *:
         """Raise error if indices and parameters do not match"""
 
-        if (self._n_indices % interaction._dindex) > 0:
+        cdef AINDEX n_interactions
+
+        if (self._n_indices % self._interaction._dindex) > 0:
             raise ValueError(
-                f"Wrong number of 'indices'; must be multiple of {interaction._dindex}"
+                f"Wrong number of 'indices'; must be multiple of {self._interaction._dindex}"
                 )
 
-        if interaction._dparam == 0:
+        if self._interaction._dparam == 0:
             if self._n_parameters == 0:
                 return
             raise ValueError(
                 f"Force {type(self).__name__!r} takes no parameters"
                 )
 
-        if (self._n_parameters % interaction._dparam) > 0:
+        if (self._n_parameters % self._interaction._dparam) > 0:
             raise ValueError(
-                f"Wrong number of 'parameters'; must be multiple of {interaction._dparam}"
+                f"Wrong number of 'parameters': "
+                f"must be multiple of {self._interaction._dparam}"
                 )
 
+        n_interactions = self._n_indices // self._interaction._dindex
+
         len_no_match = (
-            (self._n_indices / interaction._dindex) !=
-            (self._n_parameters / interaction._dparam)
+            n_interactions != (self._n_parameters // self._interaction._dparam)
         )
         if len_no_match:
             raise ValueError(
-                "Length of 'indices' and 'parameters' does not match"
+                f"Length of 'indices' ({self._n_indices}) and "
+                f"'parameters' ({self._n_parameters}) does not match"
                 )
 
-    cpdef void _check_interaction_index(
-            self, AINDEX index, Interaction interaction) except *:
-        if (index < 0) or (index >= self._n_interactions(interaction)):
-            raise IndexError(
-                "Interaction index out of range"
-                )
+        self._n_interactions = n_interactions
 
-    def get_interaction(self, AINDEX index, Interaction interaction):
+    def get_interaction(self, AINDEX index):
         """Return info for interaction
 
         Args:
@@ -104,27 +99,41 @@ cdef class ExplicitProvider(InteractionProvider):
             corresponding values
         """
 
-        self._check_interaction_index(index, interaction)
+        if (index < 0) or (index >= (self._n_indices // self._interaction._dindex)):
+            raise IndexError(
+                "Interaction index out of range"
+                )
 
         cdef dict info = {}
         cdef AINDEX i
         cdef str name
 
-        for i, name in enumerate(interaction._index_names):
-            info[name] = self._indices[index * interaction._dindex + i]
+        for i, name in enumerate(self._interaction._index_names):
+            info[name] = self._indices[index * self._interaction._dindex + i]
 
-        for i, name in enumerate(interaction._param_names):
-            info[name] = self._parameters[index * interaction._dparam + i]
+        for i, name in enumerate(self._interaction._param_names):
+            info[name] = self._parameters[index * self._interaction._dparam + i]
 
         return info
 
-    cdef (AINDEX*, AVALUE*) get_interaction_by_index(
-            self, AINDEX index, Interaction interaction) nogil:
+    cdef (AINDEX*, AVALUE*) _next_interaction(self) nogil:
+        """Return next indices/parameters combination
 
+        Note:
+            This is not save! No check is performed if the array storing
+            indices and parameters have reached their end.
+            Use :func:`_reset_iteration` to start iteration from the beginning
+            and call :func:`_next_interaction` at most :attr:`_n_interaction`
+            times. Beyond this, the function will return nonsense.
+        """
+        self._it = self._it +  1
         return (
-            &self._indices[index * interaction._dindex],
-            &self._parameters[index * interaction._dparam]
+            &self._indices[self._it * self._interaction._dindex],
+            &self._parameters[self._it * self._interaction._dparam]
             )
+
+    cdef void _reset_iteration(self) nogil:
+        self._it = -1
 
 
 cdef class Interaction:
@@ -159,9 +168,6 @@ cdef class Interaction:
             param_names: Optional[list] = None,
             **kwargs):
 
-        if provider is None:
-            self.provider = NoProvider()
-
         self.group = group
 
     def __init__(
@@ -186,7 +192,6 @@ cdef class Interaction:
         self._dparam = len(self._param_names)
 
         self.provider = provider
-        self.provider._check_index_param_consistency(self)
 
         if _id is None:
             _id = self._default_id
@@ -215,6 +220,18 @@ cdef class Interaction:
             )
 
     @property
+    def provider(self):
+        return self._provider
+
+    @provider.setter
+    def provider(self, value):
+        if value is None:
+            value = NoProvider()
+        self._provider = value
+        self._provider._interaction = self
+        self._provider._check_consistency()
+
+    @property
     def id(self):
        return self._id
 
@@ -223,8 +240,9 @@ cdef class Interaction:
         cdef AINDEX *indices
         cdef AVALUE *parameters
 
-        for index in range(self.provider._n_interactions(self)):
-            indices, parameters = self.provider.get_interaction_by_index(index, self)
+        self._provider._reset_iteration()
+        for index in prange(self._provider._n_interactions):
+            indices, parameters = self._provider._next_interaction()
             self._add_force(indices, parameters, system)
 
     def add_force(self, indices: list, parameters: list, System system):
@@ -282,9 +300,10 @@ cdef class Interaction:
         cdef AVALUE *parameters
         cdef AVALUE energy = 0
 
-        for index in range(self.provider._n_interactions(self)):
-            indices, parameters = self.provider.get_interaction_by_index(index, self)
-            energy = energy + self._get_energy(indices, parameters, system)
+        self._provider._reset_iteration()
+        for index in prange(self._provider._n_interactions):
+            indices, parameters = self._provider._next_interaction()
+            energy += self._get_energy(indices, parameters, system)
 
         return energy
 
@@ -567,7 +586,7 @@ cdef class CosineHarmonicAngle(Interaction):
     _default_id = 1
 
     def __init__(self, *args, **kwargs):
-        """Connects three particles with parameters theta0 and k"""
+        """Connects three particles with parameters costheta0 and k"""
         super().__init__(*args, **kwargs)
 
     cdef void _add_force(

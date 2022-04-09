@@ -11,23 +11,21 @@ from eski.metrics cimport _distance, _norm2
 
 cdef class InteractionProvider:
     cdef:
-        AINDEX *_indices
-        AVALUE *_parameters
-        AINDEX _n_indices, _n_parameters
+        Interaction _interaction
+        AINDEX _n_interactions
 
-    cdef (AINDEX*, AVALUE*) get_interaction_by_index(
-        self, AINDEX index, Interaction interaction) nogil
-
-    cpdef void _check_index_param_consistency(
-        self, Interaction interaction) except *
-    cpdef void _check_interaction_index(
-        self, AINDEX index, Interaction interaction) except *
-    cdef AINDEX _n_interactions(
-        self, Interaction interaction) nogil
+    cpdef void _check_consistency(self) except *
+    cdef (AINDEX*, AVALUE*) _next_interaction(self) nogil
+    cdef void _reset_iteration(self) nogil
 
 cdef class NoProvider(InteractionProvider): pass
 
-cdef class ExplicitProvider(InteractionProvider): pass
+cdef class ExplicitProvider(InteractionProvider):
+    cdef:
+        AINDEX *_indices
+        AVALUE *_parameters
+        AINDEX _n_indices, _n_parameters
+        AINDEX _it
 
 cdef class NeighboursProvider(InteractionProvider): pass
 
@@ -37,11 +35,11 @@ cdef class Interaction:
     cdef public:
         AINDEX group
         AINDEX _id
-        InteractionProvider provider
     cdef:
         list _index_names
         list _param_names
         AINDEX _dindex, _dparam
+        InteractionProvider _provider
 
     cdef void _add_force(
         self,
