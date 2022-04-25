@@ -14,10 +14,13 @@ cdef class InteractionProvider:
     cdef (AINDEX*, AVALUE*) _next_interaction(self) nogil: ...
     cdef void _reset_iteration(self) nogil: ...
 
-cdef class NoProvider(InteractionProvider):
-    pass
+    def __init__(self, *args, **kwargs):
+        if type(self) is InteractionProvider:
+            raise RuntimeError(
+                f"Cannot instantiate abstract class {type(self)}"
+                )
 
-cdef class NeighboursProvider(InteractionProvider):
+cdef class NoProvider(InteractionProvider):
     pass
 
 cdef class ExplicitProvider(InteractionProvider):
@@ -123,7 +126,7 @@ cdef class ExplicitProvider(InteractionProvider):
             This is not save! No check is performed if the array storing
             indices and parameters have reached their end.
             Use :func:`_reset_iteration` to start iteration from the beginning
-            and call :func:`_next_interaction` at most :attr:`_n_interaction`
+            and call :func:`_next_interaction` at most :attr:`_n_interactions`
             times. Beyond this, the function will return nonsense.
         """
         self._it = self._it +  1
@@ -135,6 +138,65 @@ cdef class ExplicitProvider(InteractionProvider):
     cdef void _reset_iteration(self) nogil:
         self._it = -1
 
+
+cdef class NeighboursProvider(InteractionProvider):
+    def __cinit__(
+            self,
+            system,
+            table,
+            *,
+            **kwargs):
+
+        self._system = system
+        self._table = table
+
+    cpdef void _check_consistency(self) except *:
+        """Raise error if interaction does not require pairs"""
+
+        if self._interaction._dindex != 2:
+            raise ValueError(
+                f"interaction {self._interaction} does not work on pairs "
+                f"but provider {self} does only provide pairs"
+                )
+
+    cdef (AINDEX*, AVALUE*) _next_interaction(self) nogil:
+        """Return next indices/parameters combination
+
+        Note:
+            This is not save! No check is performed if the array storing
+            indices and parameters have reached their end.
+            Use :func:`_reset_iteration` to start iteration from the beginning
+            and call :func:`_next_interaction` at most :attr:`_n_interactions`
+            times. Beyond this, the function will return nonsense.
+        """
+        cdef AINDEX* indices = self._system.neighbours._next_interaction()
+        cdef AVALUE* parameters = self._table._get_parameters(indices)
+
+        return (indices, parameters)
+
+    cdef void _reset_iteration(self) nogil:
+        self._n_interactions = self._system.neighbours._get_n_interactions()
+        self._system.neighbours._reset_iteration()
+
+
+cdef class Table:
+    def __init__(self):
+        if type(self) is Table:
+            raise RuntimeError(
+                f"Cannot instantiate abstract class {type(self)}"
+                )
+
+    cdef AVALUE* _get_parameters(self, AINDEX* indices) nogil: ...
+
+
+cdef class DummyTable(Table):
+
+    def __cinit__(self):
+        self.parameters[0] = 0.3401
+        self.parameters[1] = 0.978638
+
+    cdef AVALUE* _get_parameters(self, AINDEX* indices) nogil:
+        return &self.parameters[0]
 
 cdef class Interaction:
     """Base class for interaction to evaluate
@@ -179,6 +241,11 @@ cdef class Interaction:
             index_names: Optional[list] = None,
             param_names: Optional[list] = None,
             **kwargs):
+
+        if type(self) is Interaction:
+            raise RuntimeError(
+                f"Cannot instantiate abstract class {type(self)}"
+                )
 
         if index_names is None:
             index_names = self._default_index_names
@@ -376,6 +443,37 @@ cdef class Exclusion(Interaction):
 
         for i in range(d):
             f1[i] = 0
+
+    cdef AVALUE _get_energy(
+            self,
+            AINDEX *indices,
+            AVALUE *parameters,
+            System system) nogil:
+
+        return 0
+
+
+cdef class Stabilizer(Interaction):
+    """Removes negligible forces acting on atoms"""
+
+    _default_index_names = ["p1"]
+    _default_param_names = ["tolerance"]
+    _default_id = 11
+
+    cdef void _add_force(
+            self,
+            AINDEX *indices,
+            AVALUE *parameters,
+            System system) nogil:
+
+        cdef AINDEX i
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
+        cdef AVALUE tolerance = parameters[0]
+
+        for i in range(d):
+            if f1[i] < tolerance:
+                f1[i] = 0
 
     cdef AVALUE _get_energy(
             self,

@@ -15,11 +15,24 @@ cdef class Neighbours:
 
     cdef void _update(self, System system) nogil
     cdef bint needs_update(self, System system) nogil
+    cdef AINDEX* _next_interaction(self) nogil
+    cdef void _reset_iteration(self) nogil
+    cdef AINDEX _get_n_interactions(self) nogil
+
 
 cdef class NoNeighbours(Neighbours):
     pass
 
-cdef class NeighboursVerletBruteForce(Neighbours):
+
+cdef class NeighboursVerletBruteForceLinear(Neighbours):
     cdef:
         vector[AINDEX] _neighbourlist
         vector[AINDEX] _n_neighbours_pos
+        AINDEX _it
+        AINDEX _subit
+
+
+cdef class NeighboursVerletBruteForceSparse(Neighbours):
+    cdef:
+        vector[AINDEX] _neighbourlist
+        AINDEX _it
