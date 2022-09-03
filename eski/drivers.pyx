@@ -47,6 +47,12 @@ cdef class Driver:
             free(self._parameters)
 
     def __init__(self, *args, **kwargs):
+
+        if type(self) is Driver:
+            raise RuntimeError(
+                f"Cannot instantiate abstract class {type(self)}"
+                )
+
         self._check_param_consistency()
 
     def __repr__(self):
@@ -127,7 +133,8 @@ cdef class SteepestDescentMinimiser(Driver):
 
         Parameters:
             tau: step-size (nm).
-            tolerance: convergence is reached when (kJ / (mol nm))
+            tolerance: convergence is reached
+                when maximum force <= tolerance (kJ / (mol nm))
             tuneup: factor by which to increase tau on accepted step
             tunelow: factor by which to decrease tau on rejected step
         """
@@ -155,33 +162,36 @@ cdef class SteepestDescentMinimiser(Driver):
 
         system.add_all_forces()
 
-        with nogil:
-            max_f = _get_max(system._forces_ptr, system._n_atoms * system._dim_per_atom)
-            if max_f <= tolerance:
-                system._stop = True
-            else:
-                for index in prange(system._n_atoms):
-                    for d in range(system._dim_per_atom):
-                        i = index * system._dim_per_atom + d
-                        trial_configuration[i] = (
-                            system._configuration[i]
-                            + system._forces[i] / max_f * self._adjusted_tau
-                            )
+        with nogil: max_f = _get_max_abs(system._forces_ptr, system._n_dim)
+
+        if max_f <= tolerance:
+            system._stop = True
+        else:
+            for index in prange(system._n_atoms, nogil=True):
+                for d in range(system._dim_per_atom):
+                    i = index * system._dim_per_atom + d
+                    trial_configuration[i] = (
+                        system._configuration[i]
+                        + system._forces[i] / max_f * self._adjusted_tau
+                        )
 
             system._configuration_ptr = trial_configuration
+            epot = system.potential_energy()
 
-        epot = system.potential_energy()
+            if epot < system._resources.prev_epot:
+                self._adjusted_tau *= tuneup
+                system._resources.prev_epot = epot
 
-        if epot < system._resources.prev_epot:
-            self._adjusted_tau *= tuneup
-            system._resources.prev_epot = epot
+                for i in prange(system._n_dim, nogil=True):
+                    system._configuration[i] = trial_configuration[i]
+            else:
+                self._adjusted_tau *= tunedown
 
-            for i in prange(system._n_dim, nogil=True):
-                system._configuration[i] = trial_configuration[i]
-        else:
-            self._adjusted_tau *= tunedown
+            system._configuration_ptr = &system._configuration[0]
 
-        system._configuration_ptr = &system._configuration[0]
+    @property
+    def adjusted_tau(self):
+        return self._adjusted_tau
 
 
 cdef class EulerIntegrator(Driver):
@@ -231,7 +241,7 @@ cdef class EulerIntegrator(Driver):
 
 
 cdef class EulerMaruyamaIntegrator(Driver):
-    """Propagate positions and velocities with a Euler-Maruyama scheme
+    """Propagate positions and velocities with the Euler-Maruyama scheme
 
     Parameters:
         dt:
@@ -277,3 +287,41 @@ cdef class EulerMaruyamaIntegrator(Driver):
                     + forces[i] * dt / atoms[index].mass / friction
                     + sigma * _random_gaussian() * sqrt_dt
                         )
+
+
+cdef class EulerCromerIntegrator(Driver):
+    """Propagate positions and velocities with the Euler-Cromer scheme
+
+    Parameters:
+        dt:
+    """
+
+    _param_names = ["dt",]
+    _param_defaults = {
+        "dt": 0.001,
+    }
+
+    cdef void _update(
+            self,
+            System system):
+
+        cdef AINDEX index, d, i
+        cdef AVALUE dt = self._parameters[0]
+
+        cdef AINDEX dim_per_atom = system._dim_per_atom
+        cdef InternalAtom *atoms = system._atoms
+        cdef AVALUE *q = &system._configuration[0]
+        cdef AVALUE *v = &system._velocities[0]
+        cdef AVALUE *forces = &system._forces[0]
+
+        system.add_all_forces()
+
+        for index in prange(system._n_atoms, nogil=True):
+            if atoms[index].mass <= 0:
+                continue
+
+            for d in range(dim_per_atom):
+                i = index * dim_per_atom + d
+
+                v[i] = v[i] + forces[i] / atoms[index].mass * dt
+                q[i] = q[i] + v[i] * dt

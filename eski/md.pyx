@@ -1,5 +1,6 @@
 import sys
 import warnings
+import weakref
 
 cimport cython
 from cython.parallel cimport prange
@@ -141,11 +142,16 @@ cdef class System:
             desc = ""
         self.desc = desc
 
+    #def __init__(self, *args, **kwargs):
         self._resources = Resources(self)
 
     def __dealloc__(self):
         if self._atoms != NULL:
             free(self._atoms)
+
+    @property
+    def resources(self):
+        return self._resources
 
     @property
     def configuration(self):
@@ -236,6 +242,80 @@ cdef class System:
             r += cpow(self._resources.rva[i], 2)
 
         return csqrt(r)
+
+    def angle(self, AINDEX a, AINDEX b, AINDEX c):
+        """PBC angle between atoms with indices a, b, and c"""
+
+        cdef AINDEX i
+        cdef AVALUE costheta = 0
+        cdef AVALUE ra, rb
+
+        self.pbc._pbc_distance(
+            self._resources.rva,
+            &self._configuration_ptr[a * self._dim_per_atom],
+            &self._configuration_ptr[b * self._dim_per_atom],
+            self._dim_per_atom
+            )
+
+        ra = _norm2(self._resources.rva, self._dim_per_atom)
+
+        self.pbc._pbc_distance(
+            self._resources.rvb,
+            &self._configuration_ptr[c * self._dim_per_atom],
+            &self._configuration_ptr[b * self._dim_per_atom],
+            self._dim_per_atom
+            )
+
+        rb = _norm2(self._resources.rvb, self._dim_per_atom)
+
+        for i in range(self._dim_per_atom):
+            costheta += (self._resources.rva[i] * self._resources.rvb[i]) / (ra * rb)
+
+        return cacos(costheta)
+
+    def torsion(self, AINDEX a, AINDEX b, AINDEX c, AINDEX d):
+        """PBC angle between atoms with indices a, b, and c"""
+
+        cdef AINDEX i
+        cdef AVALUE rbc
+        cdef AVALUE *rvab = self._resources.rva
+        cdef AVALUE *rvbc = self._resources.rvb
+        cdef AVALUE *rvcd = self._resources.rvc
+        cdef AVALUE *u = self._resources.u
+        cdef AVALUE *v = self._resources.v
+
+        if self._dim_per_atom < 3:
+            return 0
+
+        assert self._dim_per_atom == 3
+
+        self.pbc._pbc_distance(
+            rvab,
+            &self._configuration_ptr[a * self._dim_per_atom],
+            &self._configuration_ptr[b * self._dim_per_atom],
+            self._dim_per_atom
+            )
+
+        self.pbc._pbc_distance(
+            rvbc,
+            &self._configuration_ptr[b * self._dim_per_atom],
+            &self._configuration_ptr[c * self._dim_per_atom],
+            self._dim_per_atom
+            )
+
+        rbc = _norm2(rvbc, self._dim_per_atom)
+
+        self.pbc._pbc_distance(
+            rvcd,
+            &self._configuration_ptr[c * self._dim_per_atom],
+            &self._configuration_ptr[d * self._dim_per_atom],
+            self._dim_per_atom
+            )
+
+        _cross3(rvab, rvbc, u)
+        _cross3(rvbc, rvcd, v)
+
+        return _torsion(rvab, u, v, rbc, self._dim_per_atom)
 
     cdef void allocate_atoms(self):
         self._atoms = <InternalAtom*>malloc(
@@ -407,7 +487,7 @@ cdef class System:
                 if (self._step % reporter.interval) == 0:
                     reporter.report(self)
 
-        self.reset_resources()
+        # self.reset_resources()
 
     cpdef void reset_resources(self):
         self._resources = Resources(self)
@@ -420,23 +500,54 @@ cdef class Resources:
         self.rva = self.allocate_avalue_array(system._dim_per_atom)
         self.rvb = self.allocate_avalue_array(system._dim_per_atom)
         self.rvc = self.allocate_avalue_array(system._dim_per_atom)
+        self.rvan = self.allocate_avalue_array(system._dim_per_atom)
+        self.rvbn = self.allocate_avalue_array(system._dim_per_atom)
+        self.rvcn = self.allocate_avalue_array(system._dim_per_atom)
         self.der1 = self.allocate_avalue_array(system._dim_per_atom)
         self.der2 = self.allocate_avalue_array(system._dim_per_atom)
         self.der3 = self.allocate_avalue_array(system._dim_per_atom)
+        self.der4 = self.allocate_avalue_array(system._dim_per_atom)
+        self.u = self.allocate_avalue_array(system._dim_per_atom)
+        self.v = self.allocate_avalue_array(system._dim_per_atom)
         self.com_velocity = self.allocate_avalue_array(system._dim_per_atom)
 
         self.configuration = np.array([])
 
         self.prev_epot = 0
 
+    def __init__(self, system):
+        self._system = weakref.proxy(system)
+
+
+    @property
+    def configuration(self):
+        return np.asarray(self.configuration)
+
+    @property
+    def rv(self):
+        rv_list = []
+        for d in range(self._system.dim_per_atom):
+            rv_list.append(self.rva[d])
+        return np.array(rv_list)
+
+    @property
+    def prev_epot(self):
+        return self.prev_epot
+
     def __dealloc__(self):
 
         if self.rva != NULL: free(self.rva)
         if self.rvb != NULL: free(self.rvb)
         if self.rvc != NULL: free(self.rvc)
+        if self.rvan != NULL: free(self.rvan)
+        if self.rvbn != NULL: free(self.rvbn)
+        if self.rvcn != NULL: free(self.rvcn)
         if self.der1 != NULL: free(self.der1)
         if self.der2 != NULL: free(self.der2)
         if self.der3 != NULL: free(self.der3)
+        if self.der4 != NULL: free(self.der4)
+        if self.u != NULL: free(self.u)
+        if self.v != NULL: free(self.v)
         if self.com_velocity != NULL: free(self.com_velocity)
 
     cdef AVALUE* allocate_avalue_array(self, AINDEX n):

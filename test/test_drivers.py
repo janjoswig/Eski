@@ -12,7 +12,7 @@ class TestDriver:
         [
             pytest.param(
                 drivers.Driver, [0],
-                marks=pytest.mark.raises(exception=ValueError)
+                marks=pytest.mark.raises(exception=RuntimeError)
                 ),
             (drivers.EulerIntegrator, [0.1]),
             (drivers.EulerMaruyamaIntegrator, [0.1, 0.001, 300]),
@@ -26,7 +26,6 @@ class TestDriver:
     @pytest.mark.parametrize(
         "driver_type,parameters",
         [
-            (drivers.Driver, {}),
             (drivers.EulerIntegrator, {"dt": 0.1}),
             (drivers.EulerMaruyamaIntegrator, {"dt": 0.1, "friction": 0.001, "T": 300}),
             (drivers.SteepestDescentMinimiser, {"tau": 0.01, "tolerance": 100, "tuneup": 1.2, "tunedown": 0.2})
@@ -83,7 +82,7 @@ class TestDriver:
             ]
         water.drivers = [drivers.SteepestDescentMinimiser([0.01, 10, 1.2, 0.2])]
 
-        water.simulate(0)
+        water.simulate(100)
         assert water.potential_energy() < 0.001
         assert np.isclose(water.distance(0, 1), 0.09572, atol=1e-4)
         assert np.isclose(water.distance(0, 2), 0.09572, atol=1e-4)

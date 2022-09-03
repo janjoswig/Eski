@@ -8,9 +8,14 @@ P_ABOOL = np.uint8
 
 cpdef Constants make_constants():
     cdef Constants constants = Constants(
-        1.380649e-26,         # kB in kJ / K
-        0.00831446261815324,  # R in kJ / (K mol)
+        1.380649e-26,         # kB in kJ/K
+        0.00831446261815324,  # R in kJ/(K mol)
         1.66053906660e-27,    # u in kg
+        6.0221408e+23,        # nA
+        299792458,            # c in m/s
+        1.602176634e-19,      # ze in C
+        8.8541878128e-12,     # e0 in F/m
+        138.935458            # (kJ nm)/(mol ze^2)
     )
 
     return constants

@@ -35,11 +35,10 @@ class TestInteractions:
         file_regression.check(repr(interaction))
         assert isinstance(interaction.id, int)
 
-    @pytest.mark.skip(reason="Not (re-)implement")
+    @pytest.mark.skip(reason="Not (re-)implemented")
     @pytest.mark.parametrize(
         "interaction_type,mappings",
         [
-            (interactions.Interaction, [{"p1": 0, "x": 0}, {"p1": 0, "x": 1}]),
             (
                 interactions.HarmonicBond,
                 [{"p1": 0, "p2": 1, "r0": 0.1, "k": 0.2}]
@@ -66,9 +65,6 @@ class TestInteractions:
                 interactions.HarmonicBond, [1, 2], [0.1, 0.2], 1,
                 None, marks=pytest.mark.raises(exception=IndexError)
             ),
-            pytest.param(
-                interactions.Interaction, [0], [0], 0, {"p1": 0, "x": 0}
-            )
         ]
     )
     def test_get_interaction(
@@ -92,10 +88,36 @@ class TestInteractions:
             "energies": np.asarray(energies).flatten()
             })
 
+    def test_screen_lj(
+            self, num_regression):
+        system = models.system_from_model("arar1d")
+
+        r0_list = np.linspace(0.05, 0.85, 21)
+        energies = []
+        for r0 in r0_list:
+            system.interactions = [
+                interactions.LJ.from_explicit([0, 1], [r0, 0.978638])
+                ]
+            energies.append(system.potential_energy())
+
+        num_regression.check({
+            "energies": np.asarray(energies).flatten()
+            })
+
     def test_add_all_forces_cc1d(self, num_regression):
         system = models.system_from_model("cc1d")
         system.interactions = [
             interactions.HarmonicBond.from_explicit([0, 1], [0.16, 259408])
+            ]
+        system.add_all_forces()
+        num_regression.check({
+            "forces": system.forces
+            })
+
+    def test_add_all_forces_arar1d(self, num_regression):
+        system = models.system_from_model("arar1d")
+        system.interactions = [
+            interactions.LJ.from_explicit([0, 1], [0.33, 0.978638])
             ]
         system.add_all_forces()
         num_regression.check({

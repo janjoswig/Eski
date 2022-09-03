@@ -1,14 +1,17 @@
 cimport numpy as np
 
 from libc.stdlib cimport malloc, free
-from libc.math cimport sqrt as csqrt, pow as cpow, acos as cacos, cos as ccos, sin as csin
+from libc.math cimport (
+    sqrt as csqrt, pow as cpow,
+    acos as cacos, cos as ccos, sin as csin
+)
 from libcpp.vector cimport vector
 
 from eski.primitive_types cimport AINDEX, AVALUE, ABOOL
 from eski.primitive_types cimport _allocate_and_fill_aindex_array, _allocate_and_fill_avalue_array
 from eski.md cimport System
 from eski.neighbours import Neighbours
-from eski.metrics cimport _distance, _norm2
+from eski.metrics cimport _distance, _norm2, _norm2sq, _normalise, _cosangle, _derangle, _cross3, _torsion, _dertorsion
 
 
 cdef class InteractionProvider:
@@ -79,5 +82,9 @@ cdef class ConstantBias(Interaction): pass
 cdef class Exclusion(Interaction): pass
 cdef class Stabilizer(Interaction): pass
 cdef class HarmonicPositionRestraint(Interaction): pass
+cdef class HarmonicRepulsion(Interaction): pass
 cdef class HarmonicBond(Interaction): pass
+cdef class HarmonicAngle(Interaction): pass
+cdef class CosineHarmonicAngle(Interaction): pass
+cdef class HarmonicTorsion(Interaction): pass
 cdef class LJ(Interaction): pass

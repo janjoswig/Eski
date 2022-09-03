@@ -11,6 +11,10 @@ cdef struct Constants:
     AVALUE kB
     AVALUE R
     AVALUE u
+    AVALUE nA
+    AVALUE c
+    AVALUE ze
+    AVALUE e0
 
 cpdef Constants make_constants()
 

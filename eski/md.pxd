@@ -1,7 +1,7 @@
 cimport numpy as np
 
 from libc.stdlib cimport malloc, free
-from libc.math cimport sqrt as csqrt, pow as cpow, log as clog
+from libc.math cimport sqrt as csqrt, pow as cpow, log as clog, acos as cacos, cos as ccos, sin as csin, atan2 as catan2
 
 from eski.primitive_types cimport AINDEX, AVALUE, ABOOL
 from eski.primitive_types cimport Constants, make_constants
@@ -10,17 +10,25 @@ from eski.drivers cimport Driver
 from eski.atoms cimport Atom, InternalAtom, make_internal_atoms
 from eski.pbc cimport PBCHandler, NoPBC
 from eski.neighbours cimport Neighbours, NoNeighbours
-from eski.metrics cimport _random_gaussian, _norm2
+from eski.metrics cimport _random_gaussian, _norm2, _normalise, _cross3, _torsion
 
 
 cdef class Resources:
+    cdef public:
+        object _system
     cdef:
         AVALUE *rva
         AVALUE *rvb
         AVALUE *rvc
+        AVALUE *rvan
+        AVALUE *rvbn
+        AVALUE *rvcn
         AVALUE *der1
         AVALUE *der2
         AVALUE *der3
+        AVALUE *der4
+        AVALUE *u
+        AVALUE *v
         AVALUE *com_velocity
         AVALUE[::1] configuration
         AVALUE prev_epot
@@ -54,6 +62,8 @@ cdef class System:
         Py_ssize_t _step
         Py_ssize_t _target_step
         bint _stop
+        object __weakref__
+
 
     cdef void allocate_atoms(self)
     cdef void reset_forces(self) nogil

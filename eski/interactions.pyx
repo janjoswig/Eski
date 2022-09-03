@@ -531,6 +531,64 @@ cdef class HarmonicPositionRestraint(Interaction):
 
         return 0
 
+cdef class HarmonicRepulsion(Interaction):
+    """Harmonic spring force approximating a chemical bond"""
+
+    _default_index_names = ["p1", "p2"]
+    _default_param_names = ["r0", "k"]
+    _default_id = 1
+
+    def __init__(self, *args, **kwargs):
+        """Connects two particles with parameters r0 and k"""
+        super().__init__(*args, **kwargs)
+
+    cdef void _add_force(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
+
+        cdef AINDEX i
+        cdef AVALUE r, f, _f
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1] * d]
+        cdef AVALUE r0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AVALUE *rv = system._resources.rva
+
+        system.pbc._pbc_distance(rv, c1, c2, d)
+        r = _norm2(rv, d)
+
+        if r < r0:
+            f = k * (r - r0)
+            for i in range(d):
+                _f = f * rv[i] / r
+                f1[i] += _f
+                f2[i] -= _f
+
+    cdef AVALUE _get_energy(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
+
+        cdef AINDEX i
+        cdef AVALUE r
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE r0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AVALUE *rv = system._resources.rva
+
+        system.pbc._pbc_distance(rv, c1, c2, d)
+        r = _norm2(rv, d)
+
+        if r > r0:
+            return 0
+
+        return 0.5 * k * cpow(r - r0, 2)
 
 cdef class HarmonicBond(Interaction):
     """Harmonic spring force approximating a chemical bond"""
@@ -562,7 +620,7 @@ cdef class HarmonicBond(Interaction):
         system.pbc._pbc_distance(rv, c1, c2, d)
         r = _norm2(rv, d)
 
-        f = -k * (r - r0)
+        f = k * (r - r0)
         for i in range(d):
             _f = f * rv[i] / r
             f1[i] += _f
@@ -605,8 +663,8 @@ cdef class HarmonicAngle(Interaction):
         System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE ra, rb, f
-        cdef AVALUE cos_theta, sin_inv
+        cdef AVALUE rab, rcb, f
+        cdef AVALUE costheta
         cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
         cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
@@ -616,29 +674,30 @@ cdef class HarmonicAngle(Interaction):
         cdef AVALUE *f3 = &system._forces_ptr[indices[2] * d]
         cdef AVALUE theta0 = parameters[0]
         cdef AVALUE k = parameters[1]
-        cdef AVALUE *rva = system._resources.rva
-        cdef AVALUE *rvb = system._resources.rvb
+        cdef AVALUE *rvab = system._resources.rva
+        cdef AVALUE *rvcb = system._resources.rvb
+        cdef AVALUE *rvabn = system._resources.rvan
+        cdef AVALUE *rvcbn = system._resources.rvbn
         cdef AVALUE *der1 = system._resources.der1
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
-        system.pbc._pbc_distance(rva, c1, c2, d)
-        ra = _norm2(rva, d)
-        system.pbc._pbc_distance(rvb, c3, c2, d)
-        rb = _norm2(rvb, d)
+        system.pbc._pbc_distance(rvab, c1, c2, d)
+        rab = _norm2(rvab, d)
+        _normalise(rvab, rvabn, rab, d)
 
-        cos_theta = 0
-        for i in range(d):
-            cos_theta = cos_theta + (rva[i] / ra) * ( rvb[i] / rb)
+        system.pbc._pbc_distance(rvcb, c3, c2, d)
+        rcb = _norm2(rvcb, d)
+        _normalise(rvcb, rvcbn, rcb, d)
 
-        sin_inv = 1.0 / csqrt(1.0 - cos_theta * cos_theta)
+        costheta = _cosangle(rvabn, rvcbn, d)
+        _derangle(
+            costheta,
+            rvabn, rvcbn, rab, rcb,
+            der1, der2, der3, d
+            )
 
-        for i in range(d):
-            der1[i] = sin_inv * (cos_theta  * (rva[i] / ra) - (rvb[i] / rb)) / ra
-            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rva[i] / ra)) / rb
-            der2[i] = -(der1[i] + der3[i])
-
-        f = -k * (cacos(cos_theta) - theta0)
+        f = k * (cacos(costheta) - theta0)
         for i in range(d):
             f1[i] += f * der1[i]
             f2[i] += f * der2[i]
@@ -650,34 +709,37 @@ cdef class HarmonicAngle(Interaction):
         System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE ra, rb
-        cdef AVALUE cos_theta
+        cdef AVALUE rab, rcb
+        cdef AVALUE costheta
         cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
         cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
         cdef AVALUE *c3 = &system._configuration_ptr[indices[2] * d]
         cdef AVALUE theta0 = parameters[0]
         cdef AVALUE k = parameters[1]
-        cdef AVALUE *rva = system._resources.rva
-        cdef AVALUE *rvb = system._resources.rvb
+        cdef AVALUE *rvab = system._resources.rva
+        cdef AVALUE *rvcb = system._resources.rvb
+        cdef AVALUE *rvabn = system._resources.rvan
+        cdef AVALUE *rvcbn = system._resources.rvbn
         cdef AVALUE *der1 = system._resources.der1
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
-        system.pbc._pbc_distance(rva, c1, c2, d)
-        ra = _norm2(rva, d)
-        system.pbc._pbc_distance(rvb, c3, c2, d)
-        rb = _norm2(rvb, d)
+        system.pbc._pbc_distance(rvab, c1, c2, d)
+        rab = _norm2(rvab, d)
+        _normalise(rvab, rvabn, rab, d)
 
-        cos_theta = 0
-        for i in range(d):
-            cos_theta = cos_theta + (rva[i] / ra) * ( rvb[i] / rb)
+        system.pbc._pbc_distance(rvcb, c3, c2, d)
+        rcb = _norm2(rvcb, d)
+        _normalise(rvcb, rvcbn, rcb, d)
 
-        return 0.5 * k * cpow(cacos(cos_theta) - theta0, 2)
+        costheta = _cosangle(rvabn, rvcbn, d)
+
+        return 0.5 * k * cpow(cacos(costheta) - theta0, 2)
 
 
 cdef class CosineHarmonicAngle(Interaction):
-    """Harmonic force approximating a valence angle"""
+    """Harmonic cosine force approximating a valence angle"""
 
     _default_index_names = ["p1", "p2", "p3"]
     _default_param_names = ["costheta0", "k"]
@@ -693,8 +755,8 @@ cdef class CosineHarmonicAngle(Interaction):
         System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE ra, rb, f
-        cdef AVALUE cos_theta, sin_inv
+        cdef AVALUE rab, rcb, f
+        cdef AVALUE costheta
         cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
         cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
@@ -704,29 +766,30 @@ cdef class CosineHarmonicAngle(Interaction):
         cdef AVALUE *f3 = &system._forces_ptr[indices[2] * d]
         cdef AVALUE theta0 = parameters[0]
         cdef AVALUE k = parameters[1]
-        cdef AVALUE *rva = system._resources.rva
-        cdef AVALUE *rvb = system._resources.rvb
+        cdef AVALUE *rvab = system._resources.rva
+        cdef AVALUE *rvcb = system._resources.rvb
+        cdef AVALUE *rvabn = system._resources.rvan
+        cdef AVALUE *rvcbn = system._resources.rvbn
         cdef AVALUE *der1 = system._resources.der1
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
-        system.pbc._pbc_distance(rva, c1, c2, d)
-        ra = _norm2(rva, d)
-        system.pbc._pbc_distance(rvb, c3, c2, d)
-        rb = _norm2(rvb, d)
+        system.pbc._pbc_distance(rvab, c1, c2, d)
+        rab = _norm2(rvab, d)
+        _normalise(rvab, rvabn, rab, d)
 
-        cos_theta = 0
-        for i in range(d):
-            cos_theta = cos_theta + (rva[i] / ra) * ( rvb[i] / rb)
+        system.pbc._pbc_distance(rvcb, c3, c2, d)
+        rcb = _norm2(rvcb, d)
+        _normalise(rvcb, rvcbn, rcb, d)
 
-        sin_inv = 1.0 / csqrt(1.0 - cos_theta * cos_theta)
+        costheta = _cosangle(rvabn, rvcbn, d)
+        _derangle(
+            costheta,
+            rvabn, rvcbn, rab, rcb,
+            der1, der2, der3, d
+            )
 
-        for i in range(d):
-            der1[i] = sin_inv * (cos_theta  * (rva[i] / ra) - (rvb[i] / rb)) / ra
-            der3[i] = sin_inv * (cos_theta  * (rvb[i] / rb) - (rva[i] / ra)) / rb
-            der2[i] = -(der1[i] + der3[i])
-
-        f = k * (cos_theta - theta0) * csin(cacos(cos_theta))
+        f = -k * (costheta - theta0) * csin(cacos(costheta))
         for i in range(d):
             f1[i] += f * der1[i]
             f2[i] += f * der2[i]
@@ -738,30 +801,239 @@ cdef class CosineHarmonicAngle(Interaction):
         System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE ra, rb
-        cdef AVALUE cos_theta
+        cdef AVALUE rab, rcb
+        cdef AVALUE costheta
         cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
         cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
         cdef AVALUE *c3 = &system._configuration_ptr[indices[2] * d]
         cdef AVALUE theta0 = parameters[0]
         cdef AVALUE k = parameters[1]
-        cdef AVALUE *rva = system._resources.rva
-        cdef AVALUE *rvb = system._resources.rvb
+        cdef AVALUE *rvab = system._resources.rva
+        cdef AVALUE *rvcb = system._resources.rvb
+        cdef AVALUE *rvabn = system._resources.rvan
+        cdef AVALUE *rvcbn = system._resources.rvbn
         cdef AVALUE *der1 = system._resources.der1
         cdef AVALUE *der2 = system._resources.der2
         cdef AVALUE *der3 = system._resources.der3
 
-        system.pbc._pbc_distance(rva, c1, c2, d)
-        ra = _norm2(rva, d)
-        system.pbc._pbc_distance(rvb, c3, c2, d)
-        rb = _norm2(rvb, d)
+        system.pbc._pbc_distance(rvab, c1, c2, d)
+        rab = _norm2(rvab, d)
+        _normalise(rvab, rvabn, rab, d)
 
-        cos_theta = 0
+        system.pbc._pbc_distance(rvcb, c3, c2, d)
+        rcb = _norm2(rvcb, d)
+        _normalise(rvcb, rvcbn, rcb, d)
+
+        costheta = _cosangle(rvabn, rvcbn, d)
+
+        return 0.5 * k * cpow(costheta - theta0, 2)
+
+
+cdef class HarmonicTorsion(Interaction):
+    """Harmonic force approximating a (improper) dihedral angle"""
+
+    _default_index_names = ["p1", "p2", "p3", "p4"]
+    _default_param_names = ["phi0", "k"]
+    _default_id = 1
+
+    def __init__(self, *args, **kwargs):
+        """Connects three particles with parameters theta0 and k"""
+        super().__init__(*args, **kwargs)
+
+    cdef void _add_force(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
+
+        cdef AINDEX i
+        cdef AVALUE rbc, rbcsq, usq, vsq, f
+        cdef AVALUE phi
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[2] * d]
+        cdef AVALUE *c4 = &system._configuration_ptr[indices[3] * d]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1] * d]
+        cdef AVALUE *f3 = &system._forces_ptr[indices[2] * d]
+        cdef AVALUE *f4 = &system._forces_ptr[indices[3] * d]
+        cdef AVALUE phi0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AVALUE *rvab = system._resources.rva
+        cdef AVALUE *rvbc = system._resources.rvb
+        cdef AVALUE *rvcd = system._resources.rvc
+        cdef AVALUE *der1 = system._resources.der1
+        cdef AVALUE *der2 = system._resources.der2
+        cdef AVALUE *der3 = system._resources.der3
+        cdef AVALUE *der4 = system._resources.der4
+        cdef AVALUE *u = system._resources.u
+        cdef AVALUE *v = system._resources.v
+
+        system.pbc._pbc_distance(rvab, c1, c2, d)
+        system.pbc._pbc_distance(rvbc, c2, c3, d)
+        system.pbc._pbc_distance(rvcd, c3, c4, d)
+
+        rbcsq = _norm2sq(rvbc, d)
+        rbc = csqrt(rbcsq)
+
+        _cross3(rvab, rvbc, u)
+        _cross3(rvbc, rvcd, v)
+        usq = _norm2sq(u, d)
+        vsq = _norm2sq(v, d)
+
+        phi = _torsion(rvab, u, v, rbc, d)
+
+        _dertorsion(
+            rvab, rvbc, rvcd,
+            u, v, rbc, rbcsq, usq, vsq,
+            der1, der2, der3, der4, d
+            )
+
+        f = -k * (phi - phi0)
         for i in range(d):
-            cos_theta = cos_theta + (rva[i] / ra) * ( rvb[i] / rb)
+            f1[i] += f * der1[i]
+            f2[i] += f * der2[i]
+            f3[i] += f * der3[i]
+            f4[i] += f * der4[i]
 
-        return 0.5 * k * cpow(cos_theta - theta0, 2)
+    cdef AVALUE _get_energy(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
+
+        cdef AINDEX i
+        cdef AVALUE rbc
+        cdef AVALUE phi
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[2] * d]
+        cdef AVALUE *c4 = &system._configuration_ptr[indices[3] * d]
+        cdef AVALUE phi0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AVALUE *rvab = system._resources.rva
+        cdef AVALUE *rvbc = system._resources.rvb
+        cdef AVALUE *rvcd = system._resources.rvc
+        cdef AVALUE *u = system._resources.u
+        cdef AVALUE *v = system._resources.v
+
+        system.pbc._pbc_distance(rvab, c1, c2, d)
+        system.pbc._pbc_distance(rvbc, c2, c3, d)
+        system.pbc._pbc_distance(rvcd, c3, c4, d)
+
+        rbc = _norm2(rvbc, d)
+
+        _cross3(rvab, rvbc, u)
+        _cross3(rvbc, rvcd, v)
+
+        phi = _torsion(rvab, u, v, rbc, d)
+
+        return 0.5 * k * cpow(phi - phi0, 2)
+
+
+cdef class PeriodicTorsion(Interaction):
+    """Periodic force approximating a (improper) dihedral angle"""
+
+    _default_index_names = ["p1", "p2", "p3", "p4"]
+    _default_param_names = ["phi0", "k", "n"]
+    _default_id = 1
+
+    def __init__(self, *args, **kwargs):
+        """Connects three particles with parameters theta0 and k"""
+        super().__init__(*args, **kwargs)
+
+    cdef void _add_force(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
+
+        cdef AINDEX i
+        cdef AVALUE rbc, rbcsq, usq, vsq, f
+        cdef AVALUE phi
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[2] * d]
+        cdef AVALUE *c4 = &system._configuration_ptr[indices[3] * d]
+        cdef AVALUE *f1 = &system._forces_ptr[indices[0] * d]
+        cdef AVALUE *f2 = &system._forces_ptr[indices[1] * d]
+        cdef AVALUE *f3 = &system._forces_ptr[indices[2] * d]
+        cdef AVALUE *f4 = &system._forces_ptr[indices[3] * d]
+        cdef AVALUE phi0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AVALUE n = parameters[2]
+        cdef AVALUE *rvab = system._resources.rva
+        cdef AVALUE *rvbc = system._resources.rvb
+        cdef AVALUE *rvcd = system._resources.rvc
+        cdef AVALUE *der1 = system._resources.der1
+        cdef AVALUE *der2 = system._resources.der2
+        cdef AVALUE *der3 = system._resources.der3
+        cdef AVALUE *der4 = system._resources.der4
+        cdef AVALUE *u = system._resources.u
+        cdef AVALUE *v = system._resources.v
+
+        system.pbc._pbc_distance(rvab, c1, c2, d)
+        system.pbc._pbc_distance(rvbc, c2, c3, d)
+        system.pbc._pbc_distance(rvcd, c3, c4, d)
+
+        rbcsq = _norm2sq(rvbc, d)
+        rbc = csqrt(rbcsq)
+
+        _cross3(rvab, rvbc, u)
+        _cross3(rvbc, rvcd, v)
+        usq = _norm2sq(u, d)
+        vsq = _norm2sq(v, d)
+
+        phi = _torsion(rvab, u, v, rbc, d)
+
+        _dertorsion(
+            rvab, rvbc, rvcd,
+            u, v, rbc, rbcsq, usq, vsq,
+            der1, der2, der3, der4, d
+            )
+
+        f = -k * n * csin(n * phi - phi0)
+        for i in range(d):
+            f1[i] += f * der1[i]
+            f2[i] += f * der2[i]
+            f3[i] += f * der3[i]
+            f4[i] += f * der4[i]
+
+    cdef AVALUE _get_energy(
+        self,
+        AINDEX *indices, AVALUE *parameters,
+        System system) nogil:
+
+        cdef AINDEX i
+        cdef AVALUE rbc
+        cdef AVALUE phi
+        cdef AINDEX d = system._dim_per_atom
+        cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
+        cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
+        cdef AVALUE *c3 = &system._configuration_ptr[indices[2] * d]
+        cdef AVALUE *c4 = &system._configuration_ptr[indices[3] * d]
+        cdef AVALUE phi0 = parameters[0]
+        cdef AVALUE k = parameters[1]
+        cdef AVALUE n = parameters[2]
+        cdef AVALUE *rvab = system._resources.rva
+        cdef AVALUE *rvbc = system._resources.rvb
+        cdef AVALUE *rvcd = system._resources.rvc
+        cdef AVALUE *u = system._resources.u
+        cdef AVALUE *v = system._resources.v
+
+        system.pbc._pbc_distance(rvab, c1, c2, d)
+        system.pbc._pbc_distance(rvbc, c2, c3, d)
+        system.pbc._pbc_distance(rvcd, c3, c4, d)
+
+        rbc = _norm2(rvbc, d)
+
+        _cross3(rvab, rvbc, u)
+        _cross3(rvbc, rvcd, v)
+
+        phi = _torsion(rvab, u, v, rbc, d)
+
+        return k * (1 + ccos(n * phi - phi0))
 
 
 cdef class LJ(Interaction):
@@ -780,7 +1052,7 @@ cdef class LJ(Interaction):
         System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE r, f, _f
+        cdef AVALUE rsq, f, _f, sr2, sr6
         cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
         cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
@@ -790,14 +1062,18 @@ cdef class LJ(Interaction):
         cdef AVALUE e = parameters[1]
         cdef AVALUE *rv = system._resources.rva
 
-        system.pbc._pbc_distance(rv, c1, c2, d)
-        r = _norm2(rv, d)
+        # Ref: f = 24 * e / r * (2 * cpow(s / r, 12) - cpow(s / r, 6))
 
-        f = 24 * e / r * (2 * cpow(s / r, 12) - cpow(s / r, 6))
+        system.pbc._pbc_distance(rv, c1, c2, d)
+        rsq = _norm2sq(rv, d)
+
+        sr2 = (s * s) / rsq
+        sr6 = sr2 * sr2 * sr2
+        f = 24 * e * sr6 * (2 * sr6 - 1) / rsq
         for i in range(d):
-            _f = f * rv[i] / r
-            f1[i] += _f
-            f2[i] -= _f
+            _f = f * rv[i]
+            f1[i] -= _f
+            f2[i] += _f
 
     cdef AVALUE _get_energy(
         self,
@@ -805,7 +1081,7 @@ cdef class LJ(Interaction):
         System system) nogil:
 
         cdef AINDEX i
-        cdef AVALUE r, f
+        cdef AVALUE rsq, sr2, sr6
         cdef AINDEX d = system._dim_per_atom
         cdef AVALUE *c1 = &system._configuration_ptr[indices[0] * d]
         cdef AVALUE *c2 = &system._configuration_ptr[indices[1] * d]
@@ -813,10 +1089,14 @@ cdef class LJ(Interaction):
         cdef AVALUE e = parameters[1]
         cdef AVALUE *rv = system._resources.rva
 
-        system.pbc._pbc_distance(rv, c1, c2, d)
-        r = _norm2(rv, d)
+        # Ref: 4 * e * (cpow(s / r, 12) - cpow(s / r, 6))
 
-        return 4 * e * (cpow(s / r, 12) - cpow(s / r, 6))
+        system.pbc._pbc_distance(rv, c1, c2, d)
+        rsq = _norm2sq(rv, d)
+
+        sr2 = (s * s) / rsq
+        sr6 = sr2 * sr2 * sr2
+        return 4 * e * sr6 * (sr6 - 1)
 
     @staticmethod
     def lorentz_berthelot_combination(
