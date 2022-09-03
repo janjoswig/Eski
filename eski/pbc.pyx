@@ -15,6 +15,7 @@ cdef class PBCHandler:
             self, AVALUE *rvptr, AVALUE *p1ptr, AVALUE *p2ptr,
             AINDEX dim_per_atom) nogil: ...
 
+
 cdef class NoPBC(PBCHandler):
 
     cdef void _apply_pbc(self, System system) nogil: pass
@@ -25,7 +26,7 @@ cdef class NoPBC(PBCHandler):
         cdef AINDEX i
 
         for i in range(dim_per_atom):
-            rvptr[i] = p1ptr[i] - p2ptr[i]
+            rvptr[i] = p2ptr[i] - p1ptr[i]
 
 
 cdef class OrthorhombicPBC(PBCHandler):
@@ -48,7 +49,7 @@ cdef class OrthorhombicPBC(PBCHandler):
         for index in prange(system._n_atoms):
             for d in range(dim_per_atom):
                 i = index * dim_per_atom + d
-                configuration[i] = configuration[i] - floor(configuration[i])
+                configuration[i] = configuration[i] - floor(configuration[i] / bounds[d]) * bounds[d]
 
     cdef void _pbc_distance(
             self, AVALUE *rvptr, AVALUE *p1ptr, AVALUE *p2ptr,
@@ -107,7 +108,7 @@ cdef class TriclinicPBC(PBCHandler):
             for d in range(dim_per_atom):
                 rid_f = rid_f + boxinv[i * dim_per_atom + d] * p1ptr[i]
                 rjd_f = rjd_f + boxinv[i * dim_per_atom + d] * p2ptr[i]
-            rijd_f = rid_f - rjd_f
+            rijd_f = rjd_f - rid_f
             rijd_f = rijd_f - round(rijd_f)
 
             for d in range(dim_per_atom):
