@@ -8,7 +8,7 @@ from eski.primitive_types cimport AINDEX, AVALUE
 from eski.primitive_types cimport Constants, make_constants
 from eski.atoms cimport InternalAtom, make_internal_atoms
 from eski.md cimport System
-from eski.metrics cimport _random_gaussian, _get_max
+from eski.metrics cimport _random_gaussian, _get_max_abs
 from eski.interactions cimport Interaction
 
 
@@ -25,14 +25,7 @@ cdef class SteepestDescentMinimiser(Driver):
     cdef:
         AVALUE _adjusted_tau
 
-
-cdef class EulerIntegrator(Driver):
-    pass
-
-
-cdef class VerletIntegrator(Driver):
-    pass
-
-
-cdef class EulerMaruyamaIntegrator(Driver):
-    pass
+cdef class EulerIntegrator(Driver): pass
+cdef class VerletIntegrator(Driver): pass
+cdef class EulerMaruyamaIntegrator(Driver): pass
+cdef class EulerCromerIntegrator(Driver): pass
